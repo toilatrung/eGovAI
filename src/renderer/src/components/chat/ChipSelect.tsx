@@ -16,6 +16,12 @@ interface ChipSelectProps<V extends string> {
   icon: React.ComponentType<{ className?: string }>
   /** Shown as the menu heading and the chip's tooltip */
   label: string
+  /** Chip tooltip; defaults to `label` */
+  tooltip?: string
+  /** Shown on the chip when `value` matches no option (otherwise the first option is shown) */
+  placeholder?: string
+  /** Extra classes for the chip button */
+  chipClassName?: string
   className?: string
 }
 
@@ -30,6 +36,9 @@ export function ChipSelect<V extends string>({
   onChange,
   icon: Icon,
   label,
+  tooltip,
+  placeholder,
+  chipClassName,
   className
 }: ChipSelectProps<V>): React.JSX.Element {
   const [open, setOpen] = useState(false)
@@ -38,11 +47,9 @@ export function ChipSelect<V extends string>({
   const buttonRef = useRef<HTMLButtonElement>(null)
   const listId = useId()
 
-  const selectedIndex = Math.max(
-    0,
-    options.findIndex((o) => o.value === value)
-  )
-  const current = options[selectedIndex]
+  const foundIndex = options.findIndex((o) => o.value === value)
+  const selectedIndex = Math.max(0, foundIndex)
+  const current = foundIndex >= 0 || placeholder === undefined ? options[selectedIndex] : undefined
 
   useEffect(() => {
     if (!open) return
@@ -92,12 +99,12 @@ export function ChipSelect<V extends string>({
       <button
         ref={buttonRef}
         type="button"
-        title={label}
+        title={tooltip ?? label}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
         onClick={() => setOpen((v) => !v)}
-        className={`press flex h-7 max-w-[180px] items-center gap-1.5 rounded-md border pl-2.5 pr-2 text-[12.5px] ${
+        className={`press flex h-7 max-w-[180px] items-center gap-1.5 rounded-md border pl-2.5 pr-2 text-[12.5px] ${chipClassName ?? ''} ${
           open
             ? 'border-line-strong bg-sunken text-ink'
             : 'border-line text-muted hover:bg-sunken hover:text-ink'
@@ -105,7 +112,7 @@ export function ChipSelect<V extends string>({
       >
         <Icon className="h-[13px] w-[13px] shrink-0" />
         <span className="truncate">
-          {current ? (current.short ?? current.label.replace(/\s*\([^)]*\)$/, '')) : label}
+          {current ? (current.short ?? current.label.replace(/\s*\([^)]*\)$/, '')) : (placeholder ?? label)}
         </span>
         <ChevronDown
           className={`h-3 w-3 shrink-0 opacity-60 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}

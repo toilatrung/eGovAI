@@ -53,6 +53,7 @@ import {
 } from './services/classificationGuard'
 import { TerminalService } from './services/terminalService'
 import { readSkillPreview, searchWorkspaceEntries } from './services/workspaceService'
+import { UpdateService } from './services/updateService'
 
 let mainWindow: BrowserWindow | null = null
 let storageService: StorageService
@@ -61,6 +62,7 @@ let desktopMcpServer: DesktopMcpServer | null = null
 let interactionManager: InteractionManager | null = null
 let auditLog: AuditLogService
 let auditTracker: AgentAuditTracker
+let updateService: UpdateService | null = null
 const agyAdapter = new AgyCliAdapter()
 const terminalService = new TerminalService()
 const oauthManager = new GoogleOAuthManager()
@@ -336,6 +338,17 @@ function registerIpcHandlers(): void {
     })
     return { path: res.filePath, ...result }
   })
+
+  // ---- App updates (GitHub Releases) ----
+  ipcMain.handle('update:getState', () => updateService?.getState() ?? null)
+  ipcMain.handle('update:check', () => updateService?.check(true) ?? null)
+  ipcMain.handle('update:install', () => updateService?.downloadAndInstall() ?? null)
+  ipcMain.handle('update:skip', (_event, version: string) =>
+    typeof version === 'string' ? (updateService?.skipVersion(version) ?? null) : null
+  )
+  ipcMain.handle('update:setAutoCheck', (_event, enabled: boolean) =>
+    updateService?.setAutoCheck(enabled === true) ?? null
+  )
 
   ipcMain.handle('settings:update', (_event, partial: Partial<AppSettings>) => {
     const updated = storageService.updateSettings(partial)
@@ -626,8 +639,21 @@ app.whenReady().then(async () => {
     }
   })
   schedulerService.start()
+  updateService = new UpdateService({
+    getSettings: () => storageService.getState().settings,
+    updateSettings: (partial) => {
+      storageService.updateSettings(partial)
+    },
+    audit: auditLog,
+    onState: (state) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('update:state', state)
+      }
+    }
+  })
   registerIpcHandlers()
   createWindow()
+  updateService.start()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -637,6 +663,7 @@ app.whenReady().then(async () => {
 })
 
 app.on('before-quit', () => {
+  updateService?.stop()
   oauthManager.cancel()
   interactionManager?.cancelAll('Ứng dụng đã đóng.')
   desktopMcpServer?.stop()

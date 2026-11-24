@@ -18,6 +18,7 @@
     "tests/**/*"
   ],
   "exclude": [
-    "tests/editResend.test.ts"
+    "tests/editResend.test.ts",
+    "tests/projectConversations.test.ts"
   ]
 }

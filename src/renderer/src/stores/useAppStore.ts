@@ -83,6 +83,9 @@ interface AppState {
   selectProject: (projectId: string) => Promise<void>
   removeProject: (projectId: string) => Promise<void>
   createNewConversation: (skill?: SkillItem | null) => void
+  /** Make `projectId` the active project (if it is not already) and open a blank conversation in it. */
+  newConversationInProject: (projectId: string) => Promise<void>
+  /** Open a conversation; switches the active project when it belongs to another one. */
   selectConversation: (conversationId: string) => void
   deleteConversation: (conversationId: string) => Promise<void>
   setSelectedSkill: (skill: SkillItem | null) => void
@@ -475,9 +478,12 @@ export const useAppStore = create<AppState>((set, get) => ({
       for (const c of s.conversations) {
         if (c.projectId === projectId) delete nextStreaming[c.id]
       }
-      const nextActiveConvId = removingActive
-        ? (nextConvs.find((c) => c.projectId === nextActiveId)?.id ?? null)
-        : s.activeConversationId
+      const activeConvGone =
+        s.activeConversationId !== null && !nextConvs.some((c) => c.id === s.activeConversationId)
+      const nextActiveConvId =
+        removingActive || activeConvGone
+          ? (nextConvs.find((c) => c.projectId === nextActiveId)?.id ?? null)
+          : s.activeConversationId
       return {
         projects: remaining,
         activeProjectId: nextActiveId,
@@ -500,11 +506,36 @@ export const useAppStore = create<AppState>((set, get) => ({
     })
   },
 
+  newConversationInProject: async (projectId) => {
+    if (!get().projects.some((p) => p.id === projectId)) return
+    if (get().activeProjectId !== projectId) {
+      await get().selectProject(projectId)
+      // selectProject bails out if the project vanished while its skills were loading.
+      if (get().activeProjectId !== projectId) return
+    }
+    get().createNewConversation(null)
+  },
+
   selectConversation: (conversationId) => {
+    const state = get()
+    const conv = state.conversations.find((c) => c.id === conversationId)
+    const switchProject =
+      conv !== undefined &&
+      conv.projectId !== state.activeProjectId &&
+      state.projects.some((p) => p.id === conv.projectId)
+    if (!conv || !switchProject) {
+      set({ activeConversationId: conversationId, activeView: 'chat' })
+      return
+    }
+    // A conversation belongs to one project: opening it makes that project active.
     set({
+      activeProjectId: conv.projectId,
       activeConversationId: conversationId,
+      skills: [],
+      selectedSkill: null,
       activeView: 'chat'
     })
+    void get().refreshSkills().catch(console.error)
   },
 
   deleteConversation: async (conversationId) => {
@@ -631,7 +662,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   sendMessage: async ({ text, attachments, modelId, effort, mode, overrideSkill }) => {
     const state = get()
-    const project = state.projects.find((p) => p.id === state.activeProjectId)
+    const existing = state.conversations.find((c) => c.id === state.activeConversationId)
+    // An existing conversation always runs in its own project's folder.
+    const project = state.projects.find((p) => p.id === (existing?.projectId ?? state.activeProjectId))
     if (!project) return
 
     const trimmed = text.trim()
@@ -642,7 +675,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const effectiveEffort = effort || state.settings.effort
     const effectiveMode = mode || state.settings.mode
 
-    let conversation = state.conversations.find((c) => c.id === state.activeConversationId)
+    let conversation = existing
     const now = Date.now()
 
     if (!conversation) {

@@ -253,6 +253,61 @@ export interface AppSettings {
   globalSkillSources?: GlobalSkillSource[]
   /** Days to keep conversations (0 = keep forever). Pruned on app startup; pinned ones are kept. */
   historyRetentionDays: number
+  /** Check GitHub for a new eGovAI release on startup and every 6 hours (default on). */
+  autoUpdateCheck?: boolean
+  /** Version the user chose "Bỏ qua phiên bản này" for — automatic checks stay silent for it. */
+  skippedUpdateVersion?: string
+}
+
+/** Release checker / updater state, pushed from main on `update:state`. */
+export type UpdateStatus =
+  | 'idle'
+  | 'checking'
+  | 'not-available'
+  | 'available'
+  | 'downloading'
+  | 'verifying'
+  | 'installing'
+  | 'error'
+
+export type UpdateErrorCode =
+  | 'network'
+  | 'rateLimit'
+  | 'badResponse'
+  | 'noAsset'
+  | 'download'
+  | 'checksum'
+  | 'signature'
+  | 'signatureCheck'
+  | 'launch'
+  | 'installFailed'
+  | 'notPackaged'
+
+export interface UpdateReleaseInfo {
+  version: string
+  name: string
+  /** Release body (markdown). */
+  notes: string
+  htmlUrl: string
+  publishedAt: string
+  sizeBytes: number
+}
+
+export interface UpdateState {
+  status: UpdateStatus
+  currentVersion: string
+  /** Installing is only possible in the packaged app; dev builds only check. */
+  canInstall: boolean
+  autoCheck: boolean
+  latest?: UpdateReleaseInfo
+  /** True when `latest` is the version the user chose to skip. */
+  skipped?: boolean
+  /** How the last check was started — the banner only pops up for new versions. */
+  lastCheckManual?: boolean
+  progress?: { received: number; total: number }
+  errorCode?: UpdateErrorCode
+  errorDetail?: string
+  lastCheckedAt?: number
 }
 
 /** Data-protection status of the local history file (shown in Settings). */
@@ -454,5 +509,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   fastModelForComputerUse: false,
   agyPathOverride: '',
   agencyProfile: { ...DEFAULT_AGENCY_PROFILE },
-  historyRetentionDays: 90
+  historyRetentionDays: 90,
+  autoUpdateCheck: true
 }

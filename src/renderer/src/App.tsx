@@ -10,6 +10,8 @@ import { SkillsCatalogView } from './components/skills/SkillsCatalogView'
 import { CustomizationsView } from './components/customizations/CustomizationsView'
 import { SettingsView } from './components/settings/SettingsView'
 import { AuxiliaryPane } from './components/auxiliary/AuxiliaryPane'
+import { UpdateBanner } from './components/update/UpdateBanner'
+import { useUpdateStore } from './stores/useUpdateStore'
 
 export function App(): React.JSX.Element {
   const {
@@ -24,6 +26,8 @@ export function App(): React.JSX.Element {
     setScheduledTasks
   } = useAppStore()
   const isLight = settings.theme === 'light'
+
+  useEffect(() => useUpdateStore.getState().init(), [])
 
   useEffect(() => {
     void bootstrap()
@@ -82,6 +86,7 @@ export function App(): React.JSX.Element {
       </div>
 
       <GoogleOAuthModal />
+      <UpdateBanner />
     </div>
   )
 }

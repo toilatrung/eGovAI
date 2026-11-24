@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { EgovMark, EgovWordmark } from '../brand/EgovLogo'
+import { UpdateSection } from './UpdateSection'
 
 export function AboutPage({ isLight }: { isLight: boolean }): React.JSX.Element {
   const { t } = useTranslation()
@@ -36,6 +37,7 @@ export function AboutPage({ isLight }: { isLight: boolean }): React.JSX.Element 
             <li>{t('settings.about.reviewGoal')}</li>
           </ul>
         </section>
+        <UpdateSection />
         <section className={`mt-6 border-t pt-6 ${divider}`}>
           <h3 className="text-base font-semibold">{t('settings.about.developers')}</h3>
           <dl className="mt-4 grid gap-5 sm:grid-cols-2">

@@ -31,6 +31,8 @@ import { EgovMark } from '../brand/EgovLogo'
 import { InteractivePromptBar } from '../interaction/InteractivePromptBar'
 import { useGlobalShortcuts } from '../../utils/globalShortcuts'
 
+const ADD_PROJECT_OPTION = '__add_project__'
+
 const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'])
 
 function filePathToAttachment(fullPath: string, isDirectory = false): AttachedItem {
@@ -62,6 +64,7 @@ export function ChatCanvas(): React.JSX.Element {
     setSelectedSkill,
     updateSettings,
     createNewConversation,
+    newConversationInProject,
     sendMessage,
     abortCurrentConversation,
     pickAndAddProject,
@@ -412,6 +415,16 @@ export function ChatCanvas(): React.JSX.Element {
     textareaRef.current?.focus()
   }
 
+  // A conversation belongs to one project, so switching project always opens a fresh
+  // conversation there; the text being typed stays in the composer.
+  const handlePickProject = (value: string): void => {
+    if (value === ADD_PROJECT_OPTION) {
+      void pickAndAddProject()
+    } else if (value !== activeProjectId) {
+      void newConversationInProject(value)
+    }
+  }
+
   const canSend =
     Boolean(activeProject) &&
     Boolean(input.trim()) &&
@@ -485,6 +498,14 @@ export function ChatCanvas(): React.JSX.Element {
         ) : !activeConversation || activeConversation.messages.length === 0 ? (
           <div className="mx-auto flex max-w-[680px] flex-col gap-8 px-5 pb-6 pt-[clamp(28px,7vh,72px)]">
             <section className="egov-enter">
+              <p
+                className="mb-3 flex min-w-0 items-center gap-1.5 text-[12.5px] text-faint"
+                title={activeProject.path}
+              >
+                <Folder className="h-3.5 w-3.5 shrink-0 text-brand" aria-hidden="true" />
+                <span className="shrink-0">{t('chat.inProject')}</span>
+                <span className="min-w-0 truncate font-medium text-muted">{activeProject.name}</span>
+              </p>
               <h1 className="mb-2.5 font-display text-[clamp(26px,3.2vw,34px)] font-semibold leading-[1.12] tracking-[-0.02em] text-balance">
                 {greeting} <span className="text-faint">{t('chat.welcomeQuestion')}</span>
               </h1>
@@ -735,12 +756,34 @@ export function ChatCanvas(): React.JSX.Element {
               onKeyDown={handleKeyDown}
               disabled={!activeProject}
               rows={2}
-              placeholder={t('chat.placeholder')}
+              placeholder={activeProject ? t('chat.placeholder') : t('chat.needProjectToSend')}
               aria-label="Yêu cầu"
               className="block max-h-48 w-full resize-none bg-transparent px-4 pb-1.5 pt-3.5 text-[14.5px] leading-normal text-ink outline-none placeholder:text-faint disabled:opacity-50"
             />
 
             <div className="flex flex-wrap items-center gap-1.5 px-2 pb-2 pt-1.5">
+              <ChipSelect
+                label={t('chat.project')}
+                icon={Folder}
+                value={activeProjectId ?? ''}
+                placeholder={t('chat.selectProject')}
+                tooltip={
+                  activeProject
+                    ? `${t('chat.projectTooltip', { path: activeProject.path })}\n${t('chat.switchProjectHint')}`
+                    : t('chat.selectProject')
+                }
+                onChange={handlePickProject}
+                options={[
+                  ...projects.map((p) => ({ value: p.id, label: p.name, short: p.name, hint: p.path })),
+                  {
+                    value: ADD_PROJECT_OPTION,
+                    label: t('chat.addProjectOption'),
+                    short: t('chat.addProjectOption'),
+                    hint: t('chat.addProjectHint')
+                  }
+                ]}
+              />
+
               <button
                 onClick={() => void handlePickFiles()}
                 disabled={!activeProject}
@@ -821,8 +864,8 @@ export function ChatCanvas(): React.JSX.Element {
                 <button
                   onClick={() => void handleSend()}
                   disabled={!canSend}
-                  title={t('chat.send')}
-                  aria-label={t('chat.send')}
+                  title={activeProject ? t('chat.send') : t('chat.needProjectToSend')}
+                  aria-label={activeProject ? t('chat.send') : t('chat.needProjectToSend')}
                   className="press ml-auto flex h-8 w-8 items-center justify-center rounded-md bg-brand text-white hover:brightness-110 disabled:bg-sunken disabled:text-faint"
                 >
                   <ArrowUp className="h-4 w-4" />

@@ -29,6 +29,7 @@ export type AuditEventType =
   | 'document_exported'
   | 'history_cleared'
   | 'audit_exported'
+  | 'app_update'
 
 export interface AuditEntry {
   /** ISO-8601 timestamp */
@@ -55,7 +56,8 @@ const EVENT_LABELS: Record<AuditEventType, string> = {
   desktop_action: 'Thao tác điều khiển máy tính',
   document_exported: 'Xuất văn bản',
   history_cleared: 'Xoá lịch sử hội thoại',
-  audit_exported: 'Xuất nhật ký'
+  audit_exported: 'Xuất nhật ký',
+  app_update: 'Cập nhật ứng dụng'
 }
 
 function safeWindowsUser(): string {

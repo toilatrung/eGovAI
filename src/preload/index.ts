@@ -23,6 +23,7 @@ import type {
   SkillItem,
   StorageSecurityStatus,
   TerminalOutputEvent,
+  UpdateState,
   WorkspaceEntry
 } from '../shared/types'
 
@@ -96,6 +97,24 @@ const googleAIApi = {
   getSecurityStatus: (): Promise<StorageSecurityStatus> => ipcRenderer.invoke('security:status'),
   exportAuditLogXlsx: (): Promise<{ path: string; rows: number; unreadable: number } | null> =>
     ipcRenderer.invoke('audit:exportXlsx'),
+
+  // App updates (GitHub Releases)
+  getUpdateState: (): Promise<UpdateState | null> => ipcRenderer.invoke('update:getState'),
+  checkForUpdates: (): Promise<UpdateState | null> => ipcRenderer.invoke('update:check'),
+  installUpdate: (): Promise<UpdateState | null> => ipcRenderer.invoke('update:install'),
+  skipUpdateVersion: (version: string): Promise<UpdateState | null> =>
+    ipcRenderer.invoke('update:skip', version),
+  setAutoUpdateCheck: (enabled: boolean): Promise<UpdateState | null> =>
+    ipcRenderer.invoke('update:setAutoCheck', enabled),
+  onUpdateState: (callback: (state: UpdateState) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, data: UpdateState): void => {
+      callback(data)
+    }
+    ipcRenderer.on('update:state', listener)
+    return () => {
+      ipcRenderer.removeListener('update:state', listener)
+    }
+  },
 
   // Workspace & Skills
   listSkills: (projectPath?: string | null): Promise<SkillItem[]> =>
