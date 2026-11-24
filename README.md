@@ -4,7 +4,9 @@
 
 ## Tải về
 
-Xem trang [Releases](../../releases) — tải `eGovAI-Setup-<phiên bản>.exe` (Windows 10/11, 64-bit).
+Trang giới thiệu: **https://egovai.vercel.app**
+
+Hoặc xem trang [Releases](../../releases) — tải `eGovAI-Setup-<phiên bản>.exe` (Windows 10/11, 64-bit).
 
 ## Phát triển
 
@@ -31,6 +33,17 @@ pnpm package      # đóng gói bộ cài vào dist/ (cần .NET Framework 4.x c
 
 Script [`scripts/release.ps1`](scripts/release.ps1) chạy kiểm thử, đóng gói bộ cài, tính SHA-256, tạo tag, đẩy lên GitHub và tạo Release kèm bộ cài.
 
+## Trang giới thiệu
+
+Mã nguồn ở `site/` (HTML tĩnh), deploy lên Vercel (project `egovai`):
+
+```powershell
+cd site
+npx.cmd vercel deploy --prod
+```
+
+Nút tải tự lấy bộ cài từ bản phát hành mới nhất trên GitHub, nên không cần deploy lại khi ra phiên bản mới.
+
 ## Cấu trúc
 
 - `src/main` — tiến trình chính Electron (agent, dịch vụ: kiểm toán, phân loại mật, computer use, tài liệu, lập lịch…)
@@ -38,6 +51,7 @@ Script [`scripts/release.ps1`](scripts/release.ps1) chạy kiểm thử, đóng 
 - `src/renderer` — giao diện React
 - `src/shared` — kiểu dùng chung
 - `installer` — mã nguồn bộ cài/gỡ cài (C#/WPF) và script đóng gói
+- `site` — trang giới thiệu (Vercel)
 - `design` — logo, thiết kế
 - `tests` — kiểm thử vitest
 
