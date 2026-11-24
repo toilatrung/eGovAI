@@ -1,0 +1,417 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Cài đặt eGovAI 0.1.0" Width="852" Height="572"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="CanMinimize" WindowStartupLocation="CenterScreen"
+        UseLayoutRounding="True" SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
+        FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="14" Foreground="#161B26">
+  <Window.Resources>
+    <SolidColorBrush x:Key="Red" Color="#B3121B"/>
+    <SolidColorBrush x:Key="RedDeep" Color="#8E0E15"/>
+    <SolidColorBrush x:Key="Gold" Color="#F2C230"/>
+    <SolidColorBrush x:Key="GoldInk" Color="#9A7300"/>
+    <SolidColorBrush x:Key="Fg" Color="#161B26"/>
+    <SolidColorBrush x:Key="Muted" Color="#5D6678"/>
+    <SolidColorBrush x:Key="Faint" Color="#8A92A3"/>
+    <SolidColorBrush x:Key="Line" Color="#1A141E3C"/>
+    <SolidColorBrush x:Key="Sunken" Color="#F7F8FA"/>
+    <SolidColorBrush x:Key="Ok" Color="#1F7A4D"/>
+    <FontFamily x:Key="Display">Be Vietnam Pro, Segoe UI Variable Display, Segoe UI</FontFamily>
+    <FontFamily x:Key="Brand">Montserrat, Segoe UI</FontFamily>
+    <FontFamily x:Key="Mono">JetBrains Mono, Cascadia Mono, Consolas</FontFamily>
+
+    <!-- Nút phụ (Quay lại / Hủy / Cài lại) -->
+    <Style x:Key="Btn" TargetType="Button">
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="{StaticResource Fg}"/>
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="BorderBrush" Value="#2E141E3C"/>
+      <Setter Property="MinWidth" Value="88"/>
+      <Setter Property="Height" Value="30"/>
+      <Setter Property="Padding" Value="14,0"/>
+      <Setter Property="Margin" Value="8,0,0,0"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Focusable" Value="True"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="bd" Property="Background" Value="#F7F8FA"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Foreground" Value="#8A92A3"/>
+                <Setter TargetName="bd" Property="BorderBrush" Value="#1A141E3C"/>
+                <Setter TargetName="bd" Property="Background" Value="White"/>
+                <Setter Property="Cursor" Value="Arrow"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- Nút chính (đỏ) -->
+    <Style x:Key="BtnPrimary" TargetType="Button" BasedOn="{StaticResource Btn}">
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="bd" Background="#B3121B" BorderBrush="#B3121B" BorderThickness="1" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="bd" Property="Background" Value="#8E0E15"/>
+                <Setter TargetName="bd" Property="BorderBrush" Value="#8E0E15"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter TargetName="bd" Property="Opacity" Value="0.45"/>
+                <Setter Property="Cursor" Value="Arrow"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- Nút trên thanh tiêu đề -->
+    <Style x:Key="Cap" TargetType="Button">
+      <Setter Property="Width" Value="46"/>
+      <Setter Property="Height" Value="36"/>
+      <Setter Property="Foreground" Value="#161B26"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="bd" Background="Transparent">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="bd" Property="Background" Value="#0F141E3C"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="CapClose" TargetType="Button" BasedOn="{StaticResource Cap}">
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="bd" Background="Transparent">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="bd" Property="Background" Value="#C42B1C"/>
+                <Setter Property="Foreground" Value="White"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- Ô chọn vuông, màu đỏ -->
+    <Style x:Key="Check" TargetType="CheckBox">
+      <Setter Property="FontSize" Value="12.5"/>
+      <Setter Property="Foreground" Value="{StaticResource Muted}"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="CheckBox">
+            <Grid Background="Transparent">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+              <Border x:Name="box" Width="15" Height="15" BorderThickness="1.5" BorderBrush="#8A92A3" Background="White" VerticalAlignment="Top" Margin="0,2,0,0">
+                <Path x:Name="tick" Data="M2.5,7 L5.6,10 L11,3.6" Stroke="White" StrokeThickness="1.8" Visibility="Collapsed" Stretch="None" Margin="-0.5,-0.5,0,0"/>
+              </Border>
+              <ContentPresenter Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center" RecognizesAccessKey="False"/>
+            </Grid>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="box" Property="Background" Value="#B3121B"/>
+                <Setter TargetName="box" Property="BorderBrush" Value="#B3121B"/>
+                <Setter TargetName="tick" Property="Visibility" Value="Visible"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.5"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="Chip" TargetType="Border">
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Padding" Value="8,3"/>
+      <Setter Property="Margin" Value="0,0,6,6"/>
+    </Style>
+    <Style x:Key="Eyebrow" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="10.5"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="Foreground" Value="{StaticResource GoldInk}"/>
+      <Setter Property="Margin" Value="0,0,0,10"/>
+    </Style>
+    <Style x:Key="H2" TargetType="TextBlock">
+      <Setter Property="FontFamily" Value="{StaticResource Display}"/>
+      <Setter Property="FontSize" Value="19"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="TextWrapping" Value="Wrap"/>
+      <Setter Property="Margin" Value="0,0,0,8"/>
+    </Style>
+    <Style x:Key="Body" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="Foreground" Value="{StaticResource Muted}"/>
+      <Setter Property="TextWrapping" Value="Wrap"/>
+      <Setter Property="LineHeight" Value="21"/>
+    </Style>
+    <Style x:Key="Dot" TargetType="Button">
+      <Setter Property="Width" Value="18"/>
+      <Setter Property="Height" Value="12"/>
+      <Setter Property="Margin" Value="0,0,6,0"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Grid Background="Transparent">
+              <Rectangle Height="4" Fill="{TemplateBinding Background}" VerticalAlignment="Center"/>
+            </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+  </Window.Resources>
+
+  <Border Margin="16" Background="White" BorderBrush="#1A141E3C" BorderThickness="1">
+    <Border.Effect>
+      <DropShadowEffect BlurRadius="24" ShadowDepth="8" Direction="270" Opacity="0.18" Color="#101828"/>
+    </Border.Effect>
+    <DockPanel LastChildFill="True">
+
+      <!-- Thanh tiêu đề -->
+      <Grid x:Name="TitleBar" DockPanel.Dock="Top" Height="36" Background="White">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0" IsHitTestVisible="False">
+          <Viewbox Width="16" Height="16">
+            <Canvas Width="64" Height="64">
+              <Ellipse Width="62" Height="62" Canvas.Left="1" Canvas.Top="1" Fill="#B3121B"/>
+              <Ellipse Width="50" Height="50" Canvas.Left="7" Canvas.Top="7" Stroke="#F2C230" StrokeThickness="4"/>
+              <Ellipse Width="20" Height="20" Canvas.Left="22" Canvas.Top="22" Fill="#F2C230"/>
+            </Canvas>
+          </Viewbox>
+          <TextBlock Text="Cài đặt eGovAI 0.1.0" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center"/>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+          <Button x:Name="BtnMin" Style="{StaticResource Cap}" ToolTip="Thu nhỏ">
+            <Rectangle Width="10" Height="1" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+          </Button>
+          <Button x:Name="BtnMax" Style="{StaticResource Cap}" IsEnabled="False">
+            <Rectangle Width="10" Height="10" Stroke="#8A92A3" StrokeThickness="1"/>
+          </Button>
+          <Button x:Name="BtnClose" Style="{StaticResource CapClose}" ToolTip="Đóng">
+            <Path Data="M0,0 L10,10 M10,0 L0,10" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1"/>
+          </Button>
+        </StackPanel>
+      </Grid>
+
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="240"/>
+          <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Cột trái: biểu trưng + các bước -->
+        <Border Grid.Column="0" BorderBrush="{StaticResource Line}" BorderThickness="0,1,1,0" Padding="24,24,20,22">
+          <DockPanel LastChildFill="False">
+            <StackPanel DockPanel.Dock="Top">
+              <Viewbox Width="84" Height="84" HorizontalAlignment="Left">
+                <Canvas Width="64" Height="64" ToolTip="Biểu trưng eGovAI">
+                  <Ellipse Width="62" Height="62" Canvas.Left="1" Canvas.Top="1" Fill="#B3121B"/>
+                  <Ellipse Width="58.8" Height="58.8" Canvas.Left="2.6" Canvas.Top="2.6" Stroke="#F2C230" StrokeThickness="1"/>
+                  <Ellipse Width="45.2" Height="45.2" Canvas.Left="9.4" Canvas.Top="9.4" Stroke="#F2C230" StrokeThickness="1.2"/>
+                  <Canvas x:Name="SealSun" Width="64" Height="64">
+                    <Canvas.RenderTransform>
+                      <RotateTransform x:Name="SealRotate" CenterX="32" CenterY="32" Angle="0"/>
+                    </Canvas.RenderTransform>
+                    <Path Fill="#F2C230">
+                      <Path.Data>
+                        <GeometryGroup>
+                          <EllipseGeometry Center="37.90,6.16" RadiusX="1.3" RadiusY="1.3"/>
+                          <EllipseGeometry Center="48.52,11.28" RadiusX="1.3" RadiusY="1.3"/>
+                          <EllipseGeometry Center="55.88,20.50" RadiusX="1.3" RadiusY="1.3"/>
+                          <EllipseGeometry Center="58.50,32.00" RadiusX="1.3" RadiusY="1.3"/>
+                          <EllipseGeometry Center="55.88,43.50" RadiusX="1.3" RadiusY="1.3"/>
+                          <EllipseGeometry Center="48.52,52.72" RadiusX="1.3" RadiusY="1.3"/>
+                          <EllipseGeometry Center="37.90,57.84" RadiusX="1.3" RadiusY="1.3"/>
+                          <EllipseGeometry Center="26.10,57.84" RadiusX="1.3" RadiusY="1.3"/>
+                          <EllipseGeometry Center="15.48,52.72" RadiusX="1.3" RadiusY="1.3"/>
+                          <EllipseGeometry Center="8.12,43.50" RadiusX="1.3" RadiusY="1.3"/>
+                          <EllipseGeometry Center="5.50,32.00" RadiusX="1.3" RadiusY="1.3"/>
+                          <EllipseGeometry Center="8.12,20.50" RadiusX="1.3" RadiusY="1.3"/>
+                          <EllipseGeometry Center="15.48,11.28" RadiusX="1.3" RadiusY="1.3"/>
+                          <EllipseGeometry Center="26.10,6.16" RadiusX="1.3" RadiusY="1.3"/>
+                        </GeometryGroup>
+                      </Path.Data>
+                    </Path>
+                    <Polygon Fill="#F2C230" Points="32.00,17.00 33.16,26.93 38.51,18.49 35.24,27.93 43.73,22.65 36.69,29.74 46.62,28.66 37.20,32.00 46.62,35.34 36.69,34.26 43.73,41.35 35.24,36.07 38.51,45.51 33.16,37.07 32.00,47.00 30.84,37.07 25.49,45.51 28.76,36.07 20.27,41.35 27.31,34.26 17.38,35.34 26.80,32.00 17.38,28.66 27.31,29.74 20.27,22.65 28.76,27.93 25.49,18.49 30.84,26.93"/>
+                  </Canvas>
+                  <Ellipse Width="6.8" Height="6.8" Canvas.Left="28.6" Canvas.Top="28.6" Fill="#B3121B"/>
+                  <Ellipse Width="3.2" Height="3.2" Canvas.Left="30.4" Canvas.Top="30.4" Fill="#F2C230"/>
+                </Canvas>
+              </Viewbox>
+              <TextBlock Margin="0,14,0,0" FontFamily="{StaticResource Brand}" FontSize="30" FontWeight="Bold">
+                <Run Text="eGov" Foreground="#B3121B"/><Run Text="AI" Foreground="#9A7300"/>
+              </TextBlock>
+              <TextBlock Text="Trợ lý số cho cơ quan nhà nước" FontSize="12.5" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,10,40,0"/>
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Bottom">
+              <StackPanel x:Name="StepList"/>
+              <TextBlock Text="v0.1.0 · MIT" FontFamily="{StaticResource Mono}" FontSize="11" Foreground="{StaticResource Faint}" Margin="0,14,0,0"/>
+            </StackPanel>
+          </DockPanel>
+        </Border>
+
+        <!-- Cột phải -->
+        <Grid Grid.Column="1">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+          <Border Grid.Row="0" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="22,20,22,12">
+            <DockPanel LastChildFill="True">
+              <StackPanel DockPanel.Dock="Top">
+                <TextBlock x:Name="HeadTitle" FontFamily="{StaticResource Display}" FontSize="20" FontWeight="Bold" Text="Đang cài đặt eGovAI"/>
+                <TextBlock x:Name="HeadSub" FontSize="12.5" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,0" LineHeight="19"
+                           Text="Quá trình mất khoảng một phút. Trong lúc chờ, mời bạn làm quen với những người làm ra ứng dụng."/>
+              </StackPanel>
+
+              <!-- Tiến trình -->
+              <StackPanel x:Name="ProgPanel" DockPanel.Dock="Bottom" Margin="0,14,0,0">
+                <Grid>
+                  <TextBlock x:Name="ProgLabel" FontSize="12.5" FontWeight="SemiBold" Text="Đang chuẩn bị…" TextTrimming="CharacterEllipsis" Margin="0,0,60,0"/>
+                  <TextBlock x:Name="ProgPct" FontFamily="{StaticResource Mono}" FontSize="12" HorizontalAlignment="Right" Text="0%"/>
+                </Grid>
+                <Grid Height="2" Margin="0,7,0,0" Background="{StaticResource Line}">
+                  <Rectangle x:Name="ProgFill" Fill="#B3121B" HorizontalAlignment="Left" Width="0"/>
+                </Grid>
+                <Grid Margin="0,8,0,0" Height="18">
+                  <TextBlock x:Name="ProgPath" FontFamily="{StaticResource Mono}" FontSize="11.5" Foreground="{StaticResource Faint}" TextTrimming="CharacterEllipsis" Text=""/>
+                  <StackPanel x:Name="DoneNote" Orientation="Horizontal" Visibility="Collapsed">
+                    <Viewbox Width="16" Height="16">
+                      <Canvas Width="16" Height="16">
+                        <Ellipse Width="16" Height="16" Fill="#1F7A4D"/>
+                        <Path Data="M4.5,8.2 L7,10.6 L11.6,5.6" Stroke="White" StrokeThickness="1.8"/>
+                      </Canvas>
+                    </Viewbox>
+                    <TextBlock Text="Đã cài đặt eGovAI vào máy tính của bạn." Foreground="#1F7A4D" FontSize="12.5" FontWeight="SemiBold" Margin="7,0,0,0" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </Grid>
+              </StackPanel>
+
+              <Grid Margin="0,14,0,0">
+                <!-- Màn hình 1: Điều khoản -->
+                <Border x:Name="PageLicense" Background="{StaticResource Sunken}" BorderBrush="{StaticResource Line}" BorderThickness="1" Visibility="Collapsed">
+                  <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="18,14">
+                    <TextBlock x:Name="LicenseText" FontSize="12.5" Foreground="{StaticResource Muted}" TextWrapping="Wrap" LineHeight="19"/>
+                  </ScrollViewer>
+                </Border>
+
+                <!-- Màn hình 2: Thư mục -->
+                <Border x:Name="PageFolder" Background="{StaticResource Sunken}" BorderBrush="{StaticResource Line}" BorderThickness="1" Padding="20,18" Visibility="Collapsed">
+                  <StackPanel>
+                    <TextBlock Style="{StaticResource Eyebrow}" Text="THƯ MỤC ĐÍCH"/>
+                    <Grid>
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                      </Grid.ColumnDefinitions>
+                      <TextBox x:Name="DirBox" Height="30" VerticalContentAlignment="Center" Padding="6,0" FontFamily="{StaticResource Mono}" FontSize="12"
+                               BorderBrush="#2E141E3C" BorderThickness="1"/>
+                      <Button x:Name="BtnBrowse" Grid.Column="1" Style="{StaticResource Btn}" Content="Duyệt…"/>
+                    </Grid>
+                    <TextBlock x:Name="SpaceInfo" FontSize="12" Foreground="{StaticResource Faint}" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                    <TextBlock Style="{StaticResource Eyebrow}" Text="LỐI TẮT" Margin="0,18,0,10"/>
+                    <CheckBox x:Name="ChkDesktop" Style="{StaticResource Check}" IsChecked="True" Content="Tạo lối tắt trên màn hình Desktop" Margin="0,0,0,8"/>
+                    <CheckBox x:Name="ChkStart" Style="{StaticResource Check}" IsChecked="True" Content="Tạo lối tắt trong menu Start"/>
+                  </StackPanel>
+                </Border>
+
+                <!-- Màn hình 3–4: Giới thiệu dự án và tác giả -->
+                <Border x:Name="Stage" Background="{StaticResource Sunken}" BorderBrush="{StaticResource Line}" BorderThickness="1" Padding="20,18,20,12" ToolTip="{x:Null}">
+                  <DockPanel>
+                    <Grid DockPanel.Dock="Bottom" Margin="0,8,0,0">
+                      <StackPanel x:Name="Dots" Orientation="Horizontal" VerticalAlignment="Center"/>
+                      <TextBlock x:Name="Counter" FontFamily="{StaticResource Mono}" FontSize="11" Foreground="{StaticResource Faint}" HorizontalAlignment="Right" VerticalAlignment="Center" Text="1 / 5"/>
+                    </Grid>
+                    <Grid x:Name="Slides">
+                      <StackPanel x:Name="Slide0">
+                        <TextBlock Style="{StaticResource Eyebrow}" Text="VỀ EGOVAI"/>
+                        <TextBlock Style="{StaticResource H2}" Text="Làm việc với trợ lý AI bằng tiếng Việt, ngay trên máy tính của cơ quan"/>
+                        <TextBlock Style="{StaticResource Body}" Text="Trong cùng một không gian làm việc, cán bộ có thể trao đổi với trợ lý về tài liệu của mình, soạn thảo văn bản và đặt lịch cho các tác vụ định kỳ."/>
+                        <WrapPanel Margin="0,10,0,0">
+                          <Border Style="{StaticResource Chip}"><TextBlock FontSize="11.5" Text="Soạn thảo văn bản"/></Border>
+                          <Border Style="{StaticResource Chip}"><TextBlock FontSize="11.5" Text="Đọc .docx, .xlsx"/></Border>
+                          <Border Style="{StaticResource Chip}"><TextBlock FontSize="11.5" Text="Lịch tác vụ"/></Border>
+                          <Border Style="{StaticResource Chip}"><TextBlock FontSize="11.5" Text="Nhật ký kiểm tra"/></Border>
+                        </WrapPanel>
+                      </StackPanel>
+                      <StackPanel x:Name="Slide1" Visibility="Collapsed">
+                        <TextBlock Style="{StaticResource Eyebrow}" Text="TÁC GIẢ"/>
+                        <TextBlock Style="{StaticResource H2}" Text="Trịnh Văn Thành" Margin="0,0,0,4"/>
+                        <TextBlock FontSize="12.5" FontWeight="SemiBold" Text="Chuyên viên biệt phái tại UBND xã Thiệu Toán" Margin="0,0,0,6"/>
+                        <TextBlock Style="{StaticResource Body}" Text="Đồng tác giả eGovAI, mang góc nhìn của cán bộ cơ sở vào ứng dụng: văn bản, báo cáo, kế hoạch và những đầu việc lặp lại mỗi ngày."/>
+                      </StackPanel>
+                      <StackPanel x:Name="Slide2" Visibility="Collapsed">
+                        <TextBlock Style="{StaticResource Eyebrow}" Text="TÁC GIẢ"/>
+                        <TextBlock Style="{StaticResource H2}" Text="Trịnh Quang Trung" Margin="0,0,0,4"/>
+                        <TextBlock FontSize="12.5" FontWeight="SemiBold" Text="Kỹ sư phần mềm và kỹ sư phát triển trí tuệ nhân tạo (AI)" Margin="0,0,0,6"/>
+                        <TextBlock Style="{StaticResource Body}" Text="Đồng tác giả eGovAI, mang kinh nghiệm kỹ thuật phần mềm và AI vào ứng dụng desktop và phần kết nối lõi AI."/>
+                      </StackPanel>
+                      <StackPanel x:Name="Slide3" Visibility="Collapsed">
+                        <TextBlock Style="{StaticResource Eyebrow}" Text="SỨ MỆNH"/>
+                        <TextBlock Style="{StaticResource H2}" Text="Dành nhiều thời gian hơn cho việc cần đến con người"/>
+                        <TextBlock Style="{StaticResource Body}" Text="Giúp người Việt, đặc biệt là cán bộ ở cơ sở, sử dụng AI bằng tiếng Việt trong công việc hằng ngày để dành nhiều thời gian hơn cho những việc cần chuyên môn và sự cân nhắc của con người."/>
+                      </StackPanel>
+                      <StackPanel x:Name="Slide4" Visibility="Collapsed">
+                        <TextBlock Style="{StaticResource Eyebrow}" Text="MỤC TIÊU PHÁT TRIỂN"/>
+                        <TextBlock Style="{StaticResource H2}" Text="Ba việc eGovAI hướng tới"/>
+                        <Grid Margin="0,0,0,5"><Grid.ColumnDefinitions><ColumnDefinition Width="17"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Rectangle Width="7" Height="7" Fill="#B3121B" Margin="0,7,0,0" VerticalAlignment="Top" HorizontalAlignment="Left"/><TextBlock Style="{StaticResource Body}" Text="Hỗ trợ soạn thảo và rà soát văn bản tiếng Việt, chú trọng cách dùng từ trong công việc hành chính." Grid.Column="1"/></Grid>
+                        <Grid Margin="0,0,0,5"><Grid.ColumnDefinitions><ColumnDefinition Width="17"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Rectangle Width="7" Height="7" Fill="#B3121B" Margin="0,7,0,0" VerticalAlignment="Top" HorizontalAlignment="Left"/><TextBlock Style="{StaticResource Body}" Text="Giảm thao tác lặp lại khi tổng hợp tài liệu, lập báo cáo và theo dõi đầu việc." Grid.Column="1"/></Grid>
+                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="17"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Rectangle Width="7" Height="7" Fill="#B3121B" Margin="0,7,0,0" VerticalAlignment="Top" HorizontalAlignment="Left"/><TextBlock Style="{StaticResource Body}" Text="Giúp người dùng dễ đối chiếu bản dự thảo với tài liệu gốc trước khi sử dụng." Grid.Column="1"/></Grid>
+                      </StackPanel>
+                    </Grid>
+                  </DockPanel>
+                </Border>
+              </Grid>
+            </DockPanel>
+          </Border>
+
+          <!-- Chân trang: tùy chọn + nút -->
+          <Border Grid.Row="1" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="22,14,22,16">
+            <Grid>
+              <CheckBox x:Name="FootOpt" Style="{StaticResource Check}" VerticalAlignment="Center" HorizontalAlignment="Left" MaxWidth="180" Visibility="Hidden">
+                <TextBlock x:Name="FootOptText" TextWrapping="Wrap" Text="Mở eGovAI sau khi đóng trình cài đặt"/>
+              </CheckBox>
+              <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button x:Name="BtnBack" Style="{StaticResource Btn}" Content="Quay lại"/>
+                <Button x:Name="BtnNext" Style="{StaticResource BtnPrimary}" Content="Tiếp tục" IsDefault="True"/>
+                <Button x:Name="BtnCancel" Style="{StaticResource Btn}" Content="Hủy"/>
+              </StackPanel>
+            </Grid>
+          </Border>
+        </Grid>
+      </Grid>
+    </DockPanel>
+  </Border>
+</Window>

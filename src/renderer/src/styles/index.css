@@ -1,0 +1,447 @@
+@import "tailwindcss";
+/* Montserrat for the eGovAI wordmark, bundled (CSP allows fonts from the app only; works offline) */
+@import "@fontsource/montserrat/700.css";
+
+/* ============================================================
+   eGovAI design tokens
+   Light-first, state-style palette: đỏ son (brand) + vàng kim (accent).
+   Motion follows emilkowalski/skills: strong ease-out, <300ms UI, scale(.97) press.
+   ============================================================ */
+
+/* Re-map Tailwind's blue/indigo scale to the eGovAI red so every existing
+   blue-* / indigo-* utility across the app picks up the brand color. */
+@theme {
+  --color-blue-50: #fdf3f3;
+  --color-blue-100: #fbe4e4;
+  --color-blue-200: #f6c9ca;
+  --color-blue-300: #ee9fa1;
+  --color-blue-400: #d9474d;
+  --color-blue-500: #c41d25;
+  --color-blue-600: #b3121b;
+  --color-blue-700: #960f17;
+  --color-blue-800: #7c1016;
+  --color-blue-900: #671217;
+  --color-blue-950: #380608;
+
+  --color-indigo-50: #fdf3f3;
+  --color-indigo-100: #fbe4e4;
+  --color-indigo-200: #f6c9ca;
+  --color-indigo-300: #ee9fa1;
+  --color-indigo-400: #d9474d;
+  --color-indigo-500: #c41d25;
+  --color-indigo-600: #b3121b;
+  --color-indigo-700: #960f17;
+  --color-indigo-800: #7c1016;
+  --color-indigo-900: #671217;
+  --color-indigo-950: #380608;
+
+  --color-gold: #f2c230;
+  --color-gold-ink: #9a7300;
+
+  --font-sans: 'Segoe UI Variable Text', 'Segoe UI', 'Inter', system-ui, sans-serif;
+  --font-display: 'Segoe UI Variable Display', 'Segoe UI', 'Be Vietnam Pro', system-ui, sans-serif;
+  --font-brand: 'Montserrat', 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'Cascadia Mono', 'Cascadia Code', Consolas, ui-monospace, monospace;
+
+  /* One restrained radius family: 6px controls, 8–10px panels, 12px cards and frames.
+     Full pills are reserved for small status badges, avatars and dots. */
+  --radius-xs: 3px;
+  --radius-sm: 6px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-2xl: 12px;
+  --radius-3xl: 12px;
+
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Semantic surface tokens; switch per theme class on the app root. */
+@theme inline {
+  --color-canvas: var(--egov-canvas);
+  --color-surface: var(--egov-surface);
+  --color-sunken: var(--egov-sunken);
+  --color-line: var(--egov-line);
+  --color-line-strong: var(--egov-line-strong);
+  --color-ink: var(--egov-ink);
+  --color-muted: var(--egov-muted);
+  --color-faint: var(--egov-faint);
+  --color-brand: var(--egov-brand);
+  --color-brand-soft: var(--egov-brand-soft);
+  --color-ok: var(--egov-ok);
+  --color-ok-soft: var(--egov-ok-soft);
+  --shadow-card: var(--egov-shadow);
+  --shadow-float: var(--egov-shadow-lg);
+}
+
+:root,
+.light-theme {
+  --egov-canvas: #fafbfc;
+  --egov-surface: #ffffff;
+  --egov-sunken: #f2f4f7;
+  --egov-line: rgba(20, 30, 60, 0.07);
+  --egov-line-strong: rgba(20, 30, 60, 0.13);
+  --egov-ink: #161b26;
+  --egov-muted: #5d6678;
+  --egov-faint: #8a92a3;
+  --egov-brand: #b3121b;
+  --egov-brand-soft: rgba(179, 18, 27, 0.08);
+  --egov-ok: #1f8a5b;
+  --egov-ok-soft: rgba(31, 138, 91, 0.11);
+  --egov-shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 4px 16px -6px rgba(16, 24, 40, 0.1);
+  --egov-shadow-lg: 0 1px 2px rgba(16, 24, 40, 0.06), 0 12px 32px -10px rgba(16, 24, 40, 0.18);
+  color-scheme: light;
+}
+
+.dark-theme {
+  --egov-canvas: #0f1116;
+  --egov-surface: #161920;
+  --egov-sunken: #1c2029;
+  --egov-line: rgba(220, 225, 240, 0.07);
+  --egov-line-strong: rgba(220, 225, 240, 0.13);
+  --egov-ink: #eceef3;
+  --egov-muted: #a0a7b6;
+  --egov-faint: #6f7787;
+  --egov-brand: #e5545a;
+  --egov-brand-soft: rgba(229, 84, 90, 0.13);
+  --egov-ok: #4cc38a;
+  --egov-ok-soft: rgba(76, 195, 138, 0.14);
+  --egov-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 16px -6px rgba(0, 0, 0, 0.5);
+  --egov-shadow-lg: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px -10px rgba(0, 0, 0, 0.6);
+  color-scheme: dark;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--egov-brand);
+    outline-offset: 2px;
+  }
+}
+
+/* Press feedback: name exact properties, never transition: all. */
+.press {
+  transition:
+    transform 160ms var(--ease-out-strong),
+    background-color 150ms ease,
+    color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    opacity 150ms ease;
+}
+
+.press:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Popovers grow from their trigger; enter 150ms, scale from .97 (never 0). */
+@keyframes egov-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.97);
+  }
+}
+
+.egov-pop {
+  transform-origin: bottom left;
+  animation: egov-pop-in 150ms var(--ease-out-strong);
+}
+
+/* One container entrance with a short stagger (first screen only). */
+@keyframes egov-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.egov-enter {
+  animation: egov-rise 420ms var(--ease-out-strong) both;
+}
+
+.egov-enter-1 {
+  animation-delay: 50ms;
+}
+
+.egov-enter-2 {
+  animation-delay: 100ms;
+}
+
+/* Soft fade where the message list meets the docked composer. */
+.egov-dock-fade::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -28px;
+  height: 28px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--egov-surface));
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .press:active:not(:disabled) {
+    transform: none;
+  }
+
+  .egov-pop,
+  .egov-enter {
+    animation: egov-fade 150ms ease both;
+  }
+
+  @keyframes egov-fade {
+    from {
+      opacity: 0;
+    }
+  }
+}
+
+.app-drag {
+  -webkit-app-region: drag;
+}
+
+.app-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Custom sleek scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(120, 128, 145, 0.25);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(120, 128, 145, 0.45);
+}
+
+/* Clean Markdown typography */
+.markdown-body {
+  line-height: 1.65;
+  word-break: break-word;
+}
+
+.markdown-body p {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.markdown-body p:first-child {
+  margin-top: 0;
+}
+
+.markdown-body p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4 {
+  font-weight: 600;
+  margin-top: 1.1rem;
+  margin-bottom: 0.45rem;
+  line-height: 1.35;
+}
+
+.markdown-body h1 {
+  font-size: 1.3rem;
+}
+
+.markdown-body h2 {
+  font-size: 1.12rem;
+}
+
+.markdown-body h3 {
+  font-size: 1.02rem;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 1.4rem;
+  margin-top: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.markdown-body ul {
+  list-style-type: disc;
+}
+
+.markdown-body ol {
+  list-style-type: decimal;
+}
+
+.markdown-body li {
+  margin-top: 0.2rem;
+}
+
+.markdown-body pre {
+  margin: 0.7rem 0;
+  padding: 0.85rem 1rem;
+  border-radius: 0.65rem;
+  overflow-x: auto;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.dark-theme .markdown-body pre {
+  background: var(--egov-sunken);
+  border: 1px solid var(--egov-line);
+}
+
+.light-theme .markdown-body pre {
+  background: var(--egov-sunken);
+  border: 1px solid var(--egov-line);
+}
+
+.markdown-body code {
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.86em;
+}
+
+.markdown-body :not(pre) > code {
+  padding: 0.12rem 0.38rem;
+  border-radius: 0.35rem;
+}
+
+.dark-theme .markdown-body :not(pre) > code {
+  background: var(--egov-sunken);
+  color: #f1a7aa;
+}
+
+.light-theme .markdown-body :not(pre) > code {
+  background: var(--egov-sunken);
+  color: #960f17;
+}
+
+.markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+  font-size: 0.88rem;
+}
+
+.markdown-body th,
+.markdown-body td {
+  padding: 0.45rem 0.7rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  text-align: left;
+}
+
+.dark-theme .markdown-body th {
+  background: var(--egov-sunken);
+}
+
+.light-theme .markdown-body th {
+  background: var(--egov-sunken);
+}
+
+.markdown-body blockquote {
+  border-left: 3px solid var(--egov-brand);
+  padding-left: 0.85rem;
+  margin: 0.6rem 0;
+  opacity: 0.9;
+}
+
+.markdown-body a {
+  color: var(--egov-brand);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+
+/* Authentic Vietnamese A4 Word (.docx) preview paper styling */
+.docx-paper {
+  font-family: 'Times New Roman', Georgia, serif;
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: #0f172a;
+}
+
+.docx-paper p {
+  margin-top: 0.45rem;
+  margin-bottom: 0.45rem;
+  text-align: justify;
+}
+
+.docx-paper h1,
+.docx-paper h2,
+.docx-paper h3 {
+  font-weight: 700;
+  margin-top: 0.9rem;
+  margin-bottom: 0.45rem;
+  color: #0f172a;
+}
+
+.docx-paper h1 {
+  font-size: 17px;
+  text-align: center;
+}
+
+.docx-paper h2 {
+  font-size: 15.5px;
+}
+
+.docx-paper table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.8rem 0;
+  font-size: 13.5px;
+}
+
+.docx-paper th,
+.docx-paper td {
+  border: 1px solid #334155;
+  padding: 5px 8px;
+  vertical-align: top;
+}
+
+.docx-paper ul,
+.docx-paper ol {
+  padding-left: 1.5rem;
+  margin: 0.4rem 0;
+}
+
+.docx-paper ul {
+  list-style-type: disc;
+}
+
+.docx-paper ol {
+  list-style-type: decimal;
+}
+
+
+.dark-theme .text-gold-ink {
+  color: var(--color-gold);
+}

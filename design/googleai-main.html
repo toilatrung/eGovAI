@@ -1,0 +1,366 @@
+<title>eGovAI Desktop</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: desktop window frame — 260px sidebar + centered 680px work column; composer docked at the bottom */
+:root{
+  --bg:#fafbfc; --surface:#ffffff; --sunken:#f2f4f7; --line:rgba(20,30,60,.07); --line-strong:rgba(20,30,60,.12);
+  --fg:#141a26; --muted:#5d6678; --faint:#8a92a3;
+  --accent:#B3121B; --accent-fg:#ffffff; --accent-soft:rgba(179,18,27,.08);
+  --ok:#1f8a5b; --ok-soft:rgba(31,138,91,.12);
+  --shadow:0 1px 2px rgba(16,24,40,.05),0 4px 16px -6px rgba(16,24,40,.10);
+  --shadow-lg:0 1px 2px rgba(16,24,40,.06),0 12px 32px -10px rgba(16,24,40,.18);
+  --f-display:"Be Vietnam Pro",system-ui,sans-serif;
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  --ease-out:cubic-bezier(.23,1,.32,1);
+  --ease-in-out:cubic-bezier(.77,0,.175,1);
+  --r-sm:8px; --r-md:12px; --r-lg:18px;
+}
+/* Single light theme by request: always white and bright, regardless of the viewer's OS theme */
+:root,:root[data-theme="dark"]{color-scheme:light}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font:400 14px/1.5 var(--f-body);-webkit-font-smoothing:antialiased;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.mono{font-family:var(--f-mono);font-size:11.5px;letter-spacing:0}
+.num{font-variant-numeric:tabular-nums}
+
+/* press feedback (Emil: scale .97 on :active, 160ms ease-out, name exact properties) */
+.press{transition:transform 160ms var(--ease-out),background-color 150ms ease,color 150ms ease,box-shadow 150ms ease}
+.press:active{transform:scale(.97)}
+
+/* ---------- window ---------- */
+.window{height:100%;max-width:1280px;margin:0 auto;display:grid;grid-template-rows:auto 1fr;
+  background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow-lg);overflow:hidden;min-width:0}
+.titlebar{display:flex;align-items:center;gap:10px;height:44px;padding:0 12px;border-bottom:1px solid var(--line)}
+.lights{display:flex;gap:6px;margin-right:6px}
+.lights i{width:10px;height:10px;border-radius:50%;background:var(--line-strong)}
+.brand{display:flex;align-items:center;gap:8px;font:600 13.5px/1 var(--f-display);letter-spacing:-.01em}
+.mark{width:22px;height:22px;flex-shrink:0}
+.brand b{font-weight:700;color:var(--accent)}.brand b span{color:#9A7300}
+.crumb{color:var(--faint);font-size:13px;display:flex;align-items:center;gap:8px;min-width:0}
+.crumb b{color:var(--muted);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spacer{flex:1}
+.status{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ok);background:var(--ok-soft);padding:4px 10px 4px 8px;border-radius:999px;white-space:nowrap}
+.status i{width:6px;height:6px;border-radius:50%;background:currentColor}
+.icon-btn{width:30px;height:30px;display:grid;place-items:center;border-radius:var(--r-sm);color:var(--muted);flex-shrink:0}
+.icon-btn svg{width:16px;height:16px}
+@media (hover:hover) and (pointer:fine){.icon-btn:hover{background:var(--sunken);color:var(--fg)}}
+
+.body{display:grid;grid-template-columns:260px 1fr;min-height:0}
+
+/* ---------- sidebar ---------- */
+.side{display:flex;flex-direction:column;gap:20px;padding:14px 10px;border-right:1px solid var(--line);background:var(--bg);min-height:0;overflow:auto}
+.new{display:flex;align-items:center;gap:8px;height:36px;padding:0 12px;border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow);font-weight:500;font-size:13.5px}
+.new svg{width:16px;height:16px;color:var(--accent)}
+.new kbd{margin-left:auto;font:500 11px var(--f-mono);color:var(--faint)}
+@media (hover:hover) and (pointer:fine){.new:hover{box-shadow:var(--shadow-lg)}}
+.group{display:flex;flex-direction:column;gap:2px}
+.label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);padding:0 10px 6px;display:flex;justify-content:space-between;align-items:center}
+.label button{font:500 11.5px var(--f-body);letter-spacing:0;text-transform:none;color:var(--accent);padding:2px 6px;border-radius:6px}
+.item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:var(--r-sm);font-size:13.5px;color:var(--muted);text-align:left;width:100%;min-width:0}
+.item svg{width:15px;height:15px;flex-shrink:0;opacity:.8}
+.item .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .meta{font-size:11.5px;color:var(--faint);flex-shrink:0}
+.item[aria-current="true"]{background:var(--surface);color:var(--fg);box-shadow:var(--shadow)}
+@media (hover:hover) and (pointer:fine){.item:not([aria-current="true"]):hover{background:var(--sunken);color:var(--fg)}}
+.proj{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow)}
+.proj .ic{width:30px;height:30px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex-shrink:0}
+.proj .ic svg{width:15px;height:15px}
+.proj .n{font-weight:500;font-size:13.5px;line-height:1.3}
+.proj .s{font-size:12px;color:var(--faint)}
+.proj > div{min-width:0}
+.proj .n,.proj .s{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search{display:flex;align-items:center;gap:8px;margin:0 2px 6px;padding:0 10px;height:32px;border-radius:var(--r-sm);background:var(--sunken);color:var(--faint)}
+.search svg{width:14px;height:14px;flex-shrink:0}
+.search input{border:0;background:none;outline:none;width:100%;font-size:13px;min-width:0}
+.search input::placeholder{color:var(--faint)}
+.side-foot{margin-top:auto;display:flex;flex-direction:column;gap:2px;padding-top:12px;border-top:1px solid var(--line)}
+
+/* ---------- main ---------- */
+.main{display:flex;flex-direction:column;min-height:0;min-width:0;position:relative}
+.scroll{flex:1;overflow:auto;min-height:0}
+.col{max-width:680px;margin:0 auto;padding:clamp(28px,7vh,72px) 20px 24px;display:flex;flex-direction:column;gap:32px}
+.hello h1{font:600 clamp(26px,3.2vw,34px)/1.12 var(--f-display);letter-spacing:-.02em;margin:0 0 10px;text-wrap:balance}
+.hello h1 span{color:var(--faint)}
+.hello p{margin:0;color:var(--muted);max-width:56ch;font-size:15px;text-wrap:pretty}
+
+/* entrance: one container, short stagger, opacity+translate only */
+@media (prefers-reduced-motion:no-preference){
+  .enter{animation:rise 420ms var(--ease-out) both}
+  .enter.d1{animation-delay:50ms}.enter.d2{animation-delay:100ms}
+  @keyframes rise{from{opacity:0;transform:translateY(8px)}}
+}
+
+.quick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.qp{display:flex;gap:12px;align-items:flex-start;text-align:left;padding:14px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--surface)}
+.qp svg{width:16px;height:16px;color:var(--muted);flex-shrink:0;margin-top:2px}
+.qp b{display:block;font-weight:500;font-size:13.5px;margin-bottom:2px}
+.qp small{color:var(--faint);font-size:12.5px;line-height:1.45;display:block}
+@media (hover:hover) and (pointer:fine){.qp:hover{border-color:var(--line-strong);background:var(--bg)}.qp:hover svg{color:var(--accent)}}
+
+.sec-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.sec-h h2{font:600 13px/1 var(--f-body);margin:0;color:var(--fg)}
+.sec-h a{font-size:12.5px;color:var(--accent);text-decoration:none}
+.skills{border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden;background:var(--surface)}
+.sk{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;padding:12px 14px;width:100%;text-align:left}
+.sk + .sk{border-top:1px solid var(--line)}
+.code{font:500 12px var(--f-mono);color:var(--muted);background:var(--sunken);border-radius:6px;padding:4px 0;text-align:center}
+.sk b{font-weight:500;font-size:13.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sk small{font-size:12px;color:var(--faint)}
+.sk > div{min-width:0}
+.sk .go{font-size:12.5px;color:var(--accent);opacity:0;transform:translateX(-4px);transition:opacity 150ms ease,transform 200ms var(--ease-out)}
+@media (hover:hover) and (pointer:fine){.sk:hover{background:var(--bg)}.sk:hover .go{opacity:1;transform:none}}
+.sk:focus-visible .go{opacity:1;transform:none}
+
+/* ---------- composer ---------- */
+.dock{padding:0 20px 18px;position:relative}
+.dock::before{content:"";position:absolute;left:0;right:0;top:-32px;height:32px;pointer-events:none;background:linear-gradient(to bottom,transparent,var(--surface))}
+.composer{max-width:680px;margin:0 auto;border:1px solid var(--line-strong);border-radius:var(--r-lg);background:var(--surface);box-shadow:var(--shadow);transition:box-shadow 200ms var(--ease-out),border-color 150ms ease;position:relative}
+.composer:focus-within{border-color:color-mix(in srgb,var(--accent) 45%,var(--line-strong));box-shadow:0 0 0 4px var(--accent-soft),var(--shadow)}
+.composer textarea{display:block;width:100%;border:0;outline:none;background:none;resize:none;padding:14px 16px 6px;font-size:14.5px;line-height:1.5;min-height:52px;max-height:200px}
+.composer textarea::placeholder{color:var(--faint)}
+.bar{display:flex;align-items:center;gap:6px;padding:6px 8px 8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:999px;font-size:12.5px;color:var(--muted);border:1px solid var(--line)}
+.chip svg{width:13px;height:13px}
+@media (hover:hover) and (pointer:fine){.chip:hover{background:var(--sunken);color:var(--fg)}}
+.chip[aria-expanded="true"]{background:var(--sunken);color:var(--fg)}
+.send{margin-left:auto;width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:var(--fg);color:var(--surface)}
+.send svg{width:16px;height:16px}
+.send:disabled{background:var(--sunken);color:var(--faint);cursor:default}
+.send:disabled:active{transform:none}
+.hint{max-width:680px;margin:8px auto 0;font-size:11.5px;color:var(--faint);display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.hint kbd{font:500 11px var(--f-mono);padding:1px 5px;border-radius:4px;background:var(--sunken);color:var(--muted)}
+
+/* popover: origin at the trigger, scale .97 not 0, 150ms ease-out, exit faster */
+.pop{position:absolute;bottom:calc(100% + 8px);left:8px;width:min(340px,calc(100vw - 64px));background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-md);box-shadow:var(--shadow-lg);padding:6px;z-index:5;
+  transform-origin:bottom left;transition:opacity 150ms var(--ease-out),transform 150ms var(--ease-out)}
+.pop[data-open="false"]{opacity:0;transform:scale(.97) translateY(4px);pointer-events:none;transition-duration:110ms}
+.pop .opt{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;width:100%;text-align:left;font-size:13px}
+.pop .opt .mono{color:var(--accent);min-width:64px}
+.pop .opt span:last-child{color:var(--muted);min-width:0}
+.pop .opt[aria-selected="true"]{background:var(--sunken)}
+.pop .opt[aria-selected="true"] span:last-child{color:var(--fg)}
+.pop .cap{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);padding:6px 10px 4px}
+.effort .opt{justify-content:space-between}
+.effort .opt small{color:var(--faint);font-size:12px}
+.effort .opt svg{width:14px;height:14px;color:var(--accent);visibility:hidden}
+.effort .opt[aria-selected="true"] svg{visibility:visible}
+.pop.effort{left:auto;right:auto}
+
+/* ---------- responsive ---------- */
+.menu-btn{display:none}
+@media (max-width:820px){
+  body{padding-block:0;padding-left:0;padding-right:0}
+  .window{border-radius:0;box-shadow:none}
+  .titlebar{padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
+  .lights,.crumb{display:none}
+  .menu-btn{display:grid}
+  .body{grid-template-columns:1fr}
+  .side{position:absolute;inset:44px auto 0 0;width:min(280px,86vw);z-index:20;box-shadow:var(--shadow-lg);
+    transform:translateX(-102%);transition:transform 300ms cubic-bezier(.32,.72,0,1)}
+  .side[data-open="true"]{transform:none}
+  .window{position:relative}
+  .quick{grid-template-columns:1fr}
+  .col{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .dock{padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));padding-bottom:max(12px,env(safe-area-inset-bottom,0px))}
+  .hint{display:none}
+}
+@media (max-width:480px){.status span{display:none}.status{padding:6px}}
+@media (prefers-reduced-motion:reduce){
+  .press:active{transform:none}
+  .pop,.side,.sk .go{transition:opacity 150ms ease}
+  .pop[data-open="false"]{transform:none}
+}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.6L19.5 10.5 13.9 12.4 12 18l-1.9-5.6L4.5 10.5l5.6-1.9z"/></symbol>
+  <symbol id="i-logo" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="31" fill="#B3121B"/><circle cx="32" cy="32" r="22.6" fill="none" stroke="#F2C230" stroke-width="1.6"/>
+    <polygon fill="#F2C230" points="32.00,17.00 33.16,26.93 38.51,18.49 35.24,27.93 43.73,22.65 36.69,29.74 46.62,28.66 37.20,32.00 46.62,35.34 36.69,34.26 43.73,41.35 35.24,36.07 38.51,45.51 33.16,37.07 32.00,47.00 30.84,37.07 25.49,45.51 28.76,36.07 20.27,41.35 27.31,34.26 17.38,35.34 26.80,32.00 17.38,28.66 27.31,29.74 20.27,22.65 28.76,27.93 25.49,18.49 30.84,26.93"/>
+  </symbol>
+  <symbol id="i-plus"viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M21 12a8 8 0 01-11.6 7.1L4 20l1-4.4A8 8 0 1121 12z"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2zM4 21V5"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></symbol>
+  <symbol id="i-panel" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
+  <symbol id="i-panel-r" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4.5 4.5L19 7"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 11l-8.5 8.5a5 5 0 01-7-7L14 4a3.5 3.5 0 015 5l-8.5 8.5a2 2 0 01-3-3L15 7"/></symbol>
+  <symbol id="i-brain" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 18h3M4 12h7M4 6h11M17 18h3M14 12h6"/></symbol>
+  <symbol id="i-cpu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9z"/><path d="M14 3v6h6"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h10"/></symbol>
+</svg>
+
+<div class="window">
+  <header class="titlebar">
+    <div class="lights" aria-hidden="true"><i></i><i></i><i></i></div>
+    <button class="icon-btn press menu-btn" id="menuBtn" aria-label="Mở thanh bên" aria-expanded="false"><svg><use href="#i-menu"/></svg></button>
+    <button class="icon-btn press" aria-label="Ẩn hoặc hiện thanh bên" id="sideToggle"><svg><use href="#i-panel"/></svg></button>
+    <div class="brand"><svg class="mark" viewBox="0 0 64 64" role="img" aria-label="Logo eGovAI"><use href="#i-logo"/></svg><b>eGov<span>AI</span></b></div>
+    <div class="crumb"><span>/</span><b>Kế hoạch giáo dục — Thiệu Toán</b></div>
+    <div class="spacer"></div>
+    <div class="status" title="Lõi agy.exe đã sẵn sàng, đã đăng nhập Google"><i></i><span>Đã kết nối Antigravity</span></div>
+    <button class="icon-btn press" aria-label="Mở bảng phụ trợ"><svg><use href="#i-panel-r"/></svg></button>
+  </header>
+
+  <div class="body">
+    <aside class="side" id="side" data-open="false">
+      <button class="new press"><svg><use href="#i-plus"/></svg>Hội thoại mới<kbd>Ctrl N</kbd></button>
+
+      <div class="group">
+        <div class="label">Dự án <button class="press">Mở thư mục</button></div>
+        <div class="proj">
+          <span class="ic"><svg><use href="#i-folder"/></svg></span>
+          <div><div class="n">Kế hoạch giáo dục — Thiệu Toán</div><div class="s num">24 kỹ năng · D:\HoSo\ThieuToan</div></div>
+        </div>
+      </div>
+
+      <div class="group" style="min-height:0">
+        <div class="label">Hội thoại</div>
+        <label class="search"><svg><use href="#i-search"/></svg><input id="convSearch" placeholder="Tìm hội thoại…" aria-label="Tìm hội thoại"></label>
+        <div id="convList">
+          <button class="item press" aria-current="true"><svg><use href="#i-chat"/></svg><span class="t">Kế hoạch năm học 2026–2027</span><span class="meta num">2 giờ</span></button>
+          <button class="item press"><svg><use href="#i-chat"/></svg><span class="t">Báo cáo sơ kết học kỳ I</span><span class="meta num">Hôm qua</span></button>
+          <button class="item press"><svg><use href="#i-chat"/></svg><span class="t">Rà soát biểu VTVL trường THCS</span><span class="meta num">3 ngày</span></button>
+          <button class="item press"><svg><use href="#i-chat"/></svg><span class="t">Tổng hợp số liệu phổ cập giáo dục</span><span class="meta num">12/11</span></button>
+          <button class="item press"><svg><use href="#i-chat"/></svg><span class="t">Công văn hướng dẫn thi giáo viên giỏi</span><span class="meta num">05/11</span></button>
+        </div>
+      </div>
+
+      <div class="side-foot">
+        <button class="item press"><svg><use href="#i-book"/></svg><span class="t">Kho kỹ năng</span><span class="meta num">24</span></button>
+        <button class="item press"><svg><use href="#i-clock"/></svg><span class="t">Tác vụ định kỳ</span><span class="meta num">2</span></button>
+        <button class="item press"><svg><use href="#i-gear"/></svg><span class="t">Cài đặt</span></button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="scroll">
+        <div class="col">
+          <section class="hello enter">
+            <h1>Chào buổi sáng. <span>Hôm nay soạn gì?</span></h1>
+            <p>eGovAI chạy trên lõi Google Antigravity chính thức và đọc bộ kỹ năng trong thư mục dự án. Chọn một nghiệp vụ hoặc gõ yêu cầu bên dưới.</p>
+          </section>
+
+          <section class="quick enter d1" aria-label="Gợi ý nhanh">
+            <button class="qp press" data-fill="Hãy kiểm tra trạng thái Thư mục làm việc AI của bộ skill hiện tại và hướng dẫn tôi thiết lập thư mục lưu hồ sơ.">
+              <svg><use href="#i-folder"/></svg><span><b>Thiết lập thư mục làm việc</b><small>Chọn nơi lưu hồ sơ, biểu mẫu do AI tạo ra</small></span>
+            </button>
+            <button class="qp press" data-fill="Kiểm tra nhận diện bộ skill trong dự án. Cho tôi biết đường dẫn SOP gốc và script kiểm tra. Chưa soạn văn bản.">
+              <svg><use href="#i-check"/></svg><span><b>Kiểm tra bộ kỹ năng</b><small>Xác nhận 24 kỹ năng đã được nhận diện đúng</small></span>
+            </button>
+          </section>
+
+          <section class="enter d2">
+            <div class="sec-h"><h2>Nghiệp vụ dùng nhiều</h2><a href="#" onclick="return false">Xem cả 24 kỹ năng</a></div>
+            <div class="skills">
+              <button class="sk" data-fill="/06 Lập kế hoạch giáo dục năm học 2026–2027 cho xã Thiệu Toán."><span class="code">06</span><div><b>Lập kế hoạch giáo dục năm học</b><small>Kế hoạch · đầu ra .docx</small></div><span class="go">Dùng →</span></button>
+              <button class="sk" data-fill="/14 Soạn báo cáo sơ kết học kỳ I."><span class="code">14</span><div><b>Báo cáo sơ kết, tổng kết</b><small>Báo cáo · đầu ra .docx</small></div><span class="go">Dùng →</span></button>
+              <button class="sk" data-fill="/09 Lập bộ 09 biểu VTVL cho đơn vị."><span class="code">09</span><div><b>Lập bộ 09 biểu vị trí việc làm</b><small>Biểu mẫu · đầu ra .xlsx</small></div><span class="go">Dùng →</span></button>
+              <button class="sk" data-fill="/00 Đúc kết phiên làm việc."><span class="code">00</span><div><b>Đúc kết phiên làm việc</b><small>Chạy sau khi duyệt sản phẩm cuối</small></div><span class="go">Dùng →</span></button>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <div class="dock">
+        <div class="composer">
+          <div class="pop" id="slashPop" data-open="false" role="listbox" aria-label="Lệnh nhanh">
+            <div class="cap">Lệnh nhanh</div>
+            <button class="opt" role="option" aria-selected="true" data-cmd="/plan"><span class="mono">/plan</span><span>Lập kế hoạch từng bước trước khi làm</span></button>
+            <button class="opt" role="option" aria-selected="false" data-cmd="/kiemtra"><span class="mono">/kiemtra</span><span>Kiểm tra nhận diện bộ kỹ năng</span></button>
+            <button class="opt" role="option" aria-selected="false" data-cmd="/duyet"><span class="mono">/duyet</span><span>Duyệt sản phẩm cuối, chạy Skill 00</span></button>
+            <button class="opt" role="option" aria-selected="false" data-cmd="/moi"><span class="mono">/moi</span><span>Tạo hội thoại mới</span></button>
+          </div>
+          <div class="pop effort" id="effortPop" data-open="false" role="listbox" aria-label="Mức suy luận">
+            <div class="cap">Mức suy luận</div>
+            <button class="opt" role="option" aria-selected="false" data-v="Nhanh"><span>Nhanh <small>· câu hỏi ngắn</small></span><svg><use href="#i-check"/></svg></button>
+            <button class="opt" role="option" aria-selected="true" data-v="Cân bằng"><span>Cân bằng <small>· mặc định</small></span><svg><use href="#i-check"/></svg></button>
+            <button class="opt" role="option" aria-selected="false" data-v="Chuyên sâu"><span>Chuyên sâu <small>· văn bản dài</small></span><svg><use href="#i-check"/></svg></button>
+            <button class="opt" role="option" aria-selected="false" data-v="Tối đa"><span>Tối đa <small>· chậm nhất</small></span><svg><use href="#i-check"/></svg></button>
+          </div>
+
+          <textarea id="prompt" rows="1" placeholder="Nhập yêu cầu… gõ / để chọn lệnh, @ để đính kèm tệp" aria-label="Yêu cầu"></textarea>
+          <div class="bar">
+            <button class="icon-btn press" aria-label="Đính kèm tệp"><svg><use href="#i-clip"/></svg></button>
+            <button class="chip press"><svg><use href="#i-cpu"/></svg>Gemini 3 Pro</button>
+            <button class="chip press" id="effortBtn" aria-expanded="false" aria-haspopup="listbox"><svg><use href="#i-brain"/></svg><span id="effortVal">Cân bằng</span></button>
+            <button class="chip press"><svg><use href="#i-file"/></svg>Tự duyệt sửa tệp</button>
+            <button class="send press" id="sendBtn" aria-label="Gửi" disabled><svg><use href="#i-up"/></svg></button>
+          </div>
+        </div>
+        <div class="hint"><span><kbd>Enter</kbd> gửi</span><span><kbd>Shift Enter</kbd> xuống dòng</span><span><kbd>/</kbd> lệnh nhanh</span></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const ta = $('#prompt'), send = $('#sendBtn'), slash = $('#slashPop'), eff = $('#effortPop'), effBtn = $('#effortBtn');
+
+  const grow = () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 200) + 'px'; };
+  const sync = () => { send.disabled = !ta.value.trim(); grow(); };
+
+  const open = (pop, on) => { pop.dataset.open = on ? 'true' : 'false'; if (pop === eff) effBtn.setAttribute('aria-expanded', on); };
+
+  ta.addEventListener('input', () => { sync(); open(slash, /^\/\w*$/.test(ta.value)); });
+  ta.addEventListener('keydown', e => {
+    if (slash.dataset.open === 'true' && ['ArrowDown','ArrowUp','Enter','Escape'].includes(e.key)) {
+      e.preventDefault();
+      const opts = [...slash.querySelectorAll('.opt')];
+      let i = opts.findIndex(o => o.getAttribute('aria-selected') === 'true');
+      if (e.key === 'Escape') return open(slash, false);
+      if (e.key === 'Enter') return pick(opts[i]);
+      i = (i + (e.key === 'ArrowDown' ? 1 : -1) + opts.length) % opts.length;
+      opts.forEach((o, k) => o.setAttribute('aria-selected', k === i));
+      return;
+    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!send.disabled) fakeSend(); }
+  });
+  const pick = o => { ta.value = o.dataset.cmd + ' '; open(slash, false); ta.focus(); sync(); };
+  slash.querySelectorAll('.opt').forEach(o => o.addEventListener('click', () => pick(o)));
+
+  effBtn.addEventListener('click', e => { e.stopPropagation(); const r = effBtn.offsetLeft; eff.style.left = r + 'px'; open(eff, eff.dataset.open !== 'true'); });
+  eff.querySelectorAll('.opt').forEach(o => o.addEventListener('click', () => {
+    eff.querySelectorAll('.opt').forEach(x => x.setAttribute('aria-selected', x === o));
+    $('#effortVal').textContent = o.dataset.v; open(eff, false);
+  }));
+  document.addEventListener('click', e => {
+    if (!eff.contains(e.target)) open(eff, false);
+    if (!slash.contains(e.target) && e.target !== ta) open(slash, false);
+  });
+
+  document.querySelectorAll('[data-fill]').forEach(b => b.addEventListener('click', () => { ta.value = b.dataset.fill; ta.focus(); sync(); }));
+
+  const fakeSend = () => { ta.value = ''; sync(); ta.placeholder = 'Đã gửi. Đây là bản thảo giao diện, chưa nối với lõi Antigravity.'; };
+  send.addEventListener('click', fakeSend);
+
+  // Sidebar search filter
+  $('#convSearch').addEventListener('input', e => {
+    const q = e.target.value.toLowerCase();
+    document.querySelectorAll('#convList .item').forEach(it => { it.hidden = q && !it.textContent.toLowerCase().includes(q); });
+  });
+
+  // Mobile drawer
+  const side = $('#side'), mb = $('#menuBtn');
+  mb.addEventListener('click', e => { e.stopPropagation(); const on = side.dataset.open !== 'true'; side.dataset.open = on; mb.setAttribute('aria-expanded', on); });
+  document.addEventListener('click', e => { if (side.dataset.open === 'true' && !side.contains(e.target)) { side.dataset.open = 'false'; mb.setAttribute('aria-expanded', false); } });
+  $('#sideToggle').addEventListener('click', () => { const b = document.querySelector('.body'); const hidden = b.style.gridTemplateColumns === '0px 1fr'; b.style.gridTemplateColumns = hidden ? '' : '0px 1fr'; side.style.visibility = hidden ? '' : 'hidden'; });
+})();
+</script>
