@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>eGovAI — Trợ lý AI cho cán bộ cơ quan nhà nước</title>
+<meta name="description" content="Ứng dụng desktop Tiếng Việt chạy trên Google Antigravity: soạn văn bản đúng thể thức, xử lý Word/Excel, điều khiển máy tính có phê duyệt, chặn tài liệu mật. Miễn phí, mã nguồn mở.">
+<meta property="og:title" content="eGovAI — Trợ lý AI cho cán bộ cơ quan nhà nước">
+<meta property="og:description" content="Soạn văn bản đúng thể thức, xử lý Word/Excel, chặn tài liệu mật. Miễn phí cho Windows.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#b3121b">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Montserrat:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --canvas:#fafbfc;--surface:#fff;--sunken:#f2f4f7;
+  --line:rgba(20,30,60,.08);--line-strong:rgba(20,30,60,.14);
+  --ink:#161b26;--muted:#5d6678;--faint:#8a92a3;
+  --brand:#b3121b;--brand-ink:#fff;--brand-soft:rgba(179,18,27,.08);
+  --gold:#f2c230;--gold-ink:#9a7300;--ok:#1f8a5b;--ok-soft:rgba(31,138,91,.11);
+  --shadow:0 1px 2px rgba(16,24,40,.05),0 4px 16px -6px rgba(16,24,40,.1);
+  --shadow-lg:0 1px 2px rgba(16,24,40,.06),0 24px 48px -16px rgba(16,24,40,.22);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --canvas:#0f1116;--surface:#161920;--sunken:#1c2029;
+    --line:rgba(220,225,240,.08);--line-strong:rgba(220,225,240,.14);
+    --ink:#eceef3;--muted:#a0a7b6;--faint:#6f7787;
+    --brand:#e5545a;--brand-ink:#fff;--brand-soft:rgba(229,84,90,.13);
+    --gold-ink:#f2c230;--ok:#4cc38a;--ok-soft:rgba(76,195,138,.14);
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px -6px rgba(0,0,0,.5);
+    --shadow-lg:0 1px 2px rgba(0,0,0,.4),0 24px 48px -16px rgba(0,0,0,.7);
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--canvas);color:var(--ink);font:16px/1.6 'Be Vietnam Pro','Segoe UI',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+@media (max-width:600px){.wrap{padding:0 16px}}
+
+/* header */
+header{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--canvas) 85%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;justify-content:space-between;height:64px;gap:16px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.brand img{width:32px;height:32px}
+.wordmark{font-family:Montserrat,sans-serif;font-weight:800;font-size:20px;letter-spacing:-.01em}
+.wordmark b{color:var(--brand);font-weight:800}
+.nav-links{display:flex;align-items:center;gap:24px;font-size:15px;color:var(--muted)}
+.nav-links a{text-decoration:none}
+.nav-links a:hover{color:var(--ink)}
+@media (max-width:760px){.nav-links .hide-sm{display:none}}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:10px;border-radius:8px;padding:12px 20px;font-weight:600;font-size:16px;text-decoration:none;border:1px solid transparent;transition:transform .15s,background .15s,border-color .15s}
+.btn svg{width:20px;height:20px;flex:none}
+.btn-primary{background:var(--brand);color:var(--brand-ink);box-shadow:0 6px 16px -6px color-mix(in srgb,var(--brand) 60%,transparent)}
+.btn-primary:hover{transform:translateY(-1px);background:color-mix(in srgb,var(--brand) 88%,#000)}
+.btn-ghost{border-color:var(--line-strong);background:var(--surface)}
+.btn-ghost:hover{border-color:var(--faint)}
+.btn-sm{padding:8px 14px;font-size:14px}
+
+/* hero */
+.hero{padding:72px 0 56px;display:grid;grid-template-columns:1.05fr 1fr;gap:56px;align-items:center}
+@media (max-width:920px){.hero{grid-template-columns:1fr;padding:48px 0 40px;gap:40px}}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--brand);background:var(--brand-soft);padding:5px 12px;border-radius:99px}
+.eyebrow i{width:6px;height:6px;border-radius:50%;background:var(--brand)}
+h1{font-size:clamp(34px,5vw,54px);line-height:1.12;letter-spacing:-.025em;margin:18px 0 18px;font-weight:700}
+h1 em{font-style:normal;color:var(--brand)}
+.lead{font-size:18px;color:var(--muted);max-width:540px;margin:0 0 28px}
+.cta{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.meta{margin-top:14px;font-size:14px;color:var(--faint)}
+.meta span+span::before{content:"·";margin:0 8px}
+
+/* app mock */
+.mock{background:var(--surface);border:1px solid var(--line-strong);border-radius:12px;box-shadow:var(--shadow-lg);overflow:hidden;font-size:13px}
+.mock-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--sunken)}
+.mock-bar img{width:16px;height:16px}
+.mock-bar strong{font-family:Montserrat,sans-serif;font-size:13px}
+.mock-bar .dots{margin-left:auto;display:flex;gap:14px;color:var(--faint);font-size:12px}
+.mock-body{display:grid;grid-template-columns:150px 1fr;min-height:340px}
+.mock-side{border-right:1px solid var(--line);padding:12px 10px;display:flex;flex-direction:column;gap:4px;color:var(--muted)}
+.mock-side .new{background:var(--brand);color:#fff;border-radius:6px;padding:6px 10px;font-weight:600;margin-bottom:8px}
+.mock-side div{padding:5px 8px;border-radius:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mock-side .on{background:var(--sunken);color:var(--ink)}
+.mock-side small{font-size:11px;color:var(--faint);margin:8px 8px 2px;text-transform:uppercase;letter-spacing:.05em}
+.mock-chat{padding:16px;display:flex;flex-direction:column;gap:12px}
+.bubble-u{align-self:flex-end;background:var(--sunken);border-radius:10px 10px 2px 10px;padding:8px 12px;max-width:85%}
+.bubble-a{max-width:95%;color:var(--ink)}
+.bubble-a p{margin:0 0 6px}
+.tool{display:flex;align-items:center;gap:8px;border:1px solid var(--line-strong);border-radius:6px;padding:6px 10px;color:var(--muted);font-size:12px;margin:6px 0}
+.tool b{color:var(--ok);font-weight:600}
+.cite{display:inline-block;border-bottom:1px dashed var(--brand);color:var(--brand)}
+.alert{display:flex;gap:8px;align-items:flex-start;background:var(--brand-soft);border:1px solid color-mix(in srgb,var(--brand) 30%,transparent);border-radius:8px;padding:8px 10px;font-size:12px}
+.alert strong{color:var(--brand)}
+.mock-input{margin-top:auto;border:1px solid var(--line-strong);border-radius:8px;padding:9px 12px;color:var(--faint);display:flex;justify-content:space-between}
+.mock-input span:last-child{color:var(--brand);font-weight:600}
+@media (max-width:520px){.mock-body{grid-template-columns:1fr}.mock-side{display:none}}
+
+/* sections */
+section{padding:72px 0}
+@media (max-width:600px){section{padding:52px 0}}
+.sec-head{max-width:640px;margin-bottom:36px}
+h2{font-size:clamp(26px,3.4vw,36px);line-height:1.2;letter-spacing:-.02em;margin:0 0 12px}
+.sec-head p{color:var(--muted);margin:0;font-size:17px}
+.band{background:var(--surface);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media (max-width:920px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:600px){.grid{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line-strong);border-radius:10px;padding:22px;box-shadow:var(--shadow)}
+.band .card{background:var(--canvas)}
+.ico{width:40px;height:40px;border-radius:8px;display:grid;place-items:center;background:var(--brand-soft);color:var(--brand);margin-bottom:14px}
+.ico svg{width:22px;height:22px}
+.card h3{font-size:17px;margin:0 0 6px;letter-spacing:-.01em}
+.card p{margin:0;color:var(--muted);font-size:15px}
+
+/* security */
+.sec2{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start}
+@media (max-width:920px){.sec2{grid-template-columns:1fr;gap:28px}}
+.checks{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:14px}
+.checks li{display:flex;gap:14px;align-items:flex-start;background:var(--surface);border:1px solid var(--line-strong);border-radius:10px;padding:16px 18px}
+.checks svg{flex:none;width:22px;height:22px;color:var(--ok);margin-top:2px}
+.checks strong{display:block;margin-bottom:2px}
+.checks span{color:var(--muted);font-size:15px}
+.risk{display:flex;flex-direction:column;gap:10px;margin-top:24px}
+.risk div{display:flex;align-items:center;gap:12px;font-size:15px}
+.pill{font-size:12px;font-weight:600;padding:3px 10px;border-radius:99px;min-width:76px;text-align:center}
+.p-read{background:var(--ok-soft);color:var(--ok)}
+.p-low{background:color-mix(in srgb,var(--gold) 22%,transparent);color:var(--gold-ink)}
+.p-high{background:var(--brand-soft);color:var(--brand)}
+
+/* steps */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;counter-reset:s}
+@media (max-width:760px){.steps{grid-template-columns:1fr}}
+.step{position:relative;padding:22px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface)}
+.step::before{counter-increment:s;content:counter(s);display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--ink);color:var(--canvas);font-weight:700;margin-bottom:12px}
+.step h3{margin:0 0 6px;font-size:17px}
+.step p{margin:0;color:var(--muted);font-size:15px}
+.note{margin-top:20px;font-size:14px;color:var(--muted);background:var(--sunken);border-radius:8px;padding:12px 16px}
+.note code,.mono{font-family:'Cascadia Mono',Consolas,ui-monospace,monospace;font-size:13px}
+
+/* download */
+.dl{text-align:center;padding:64px 24px;border-radius:16px;background:var(--surface);border:1px solid var(--line-strong);box-shadow:var(--shadow)}
+.dl img{width:64px;height:64px;margin-bottom:12px}
+.dl p{color:var(--muted);margin:0 auto 24px;max-width:520px}
+.dl .cta{justify-content:center}
+.hash{margin-top:18px;font-size:12px;color:var(--faint);word-break:break-all}
+
+footer{padding:36px 0 48px;color:var(--faint);font-size:14px}
+.foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;border-top:1px solid var(--line);padding-top:24px}
+.foot a{text-decoration:none}.foot a:hover{color:var(--ink)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="#">
+      <img src="logo.svg" alt="">
+      <span class="wordmark">eGov<b>AI</b></span>
+    </a>
+    <nav class="nav-links">
+      <a class="hide-sm" href="#tinh-nang">Tính năng</a>
+      <a class="hide-sm" href="#bao-mat">Bảo mật</a>
+      <a class="hide-sm" href="#cai-dat">Cài đặt</a>
+      <a class="hide-sm" href="https://github.com/toilatrung/eGovAI">GitHub</a>
+      <a class="btn btn-primary btn-sm" href="#tai-ve" data-dl>Tải về</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap hero">
+    <div>
+      <span class="eyebrow"><i></i>Miễn phí · Mã nguồn mở · Windows</span>
+      <h1>Trợ lý AI <em>Tiếng Việt</em> cho cán bộ cơ quan nhà nước</h1>
+      <p class="lead">eGovAI giúp soạn văn bản đúng thể thức, xử lý Word và Excel, tra cứu căn cứ pháp lý và tự động hóa việc lặp lại trên máy tính. Tài liệu mật được chặn trước khi rời khỏi máy.</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="https://github.com/toilatrung/eGovAI/releases/latest" data-dl>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-5-5m5 5 5-5M5 21h14"/></svg>
+          Tải eGovAI cho Windows
+        </a>
+        <a class="btn btn-ghost" href="#tinh-nang">Xem tính năng</a>
+      </div>
+      <div class="meta"><span data-ver>Phiên bản mới nhất</span><span data-size>Windows 10/11 · 64-bit</span></div>
+    </div>
+
+    <div class="mock" aria-hidden="true">
+      <div class="mock-bar">
+        <img src="logo.svg" alt=""><strong>eGovAI</strong>
+        <div class="dots"><span>—</span><span>☐</span><span>✕</span></div>
+      </div>
+      <div class="mock-body">
+        <div class="mock-side">
+          <div class="new">+ Hội thoại mới</div>
+          <small>Dự án</small>
+          <div class="on">Văn phòng UBND</div>
+          <div>Phòng Nội vụ</div>
+          <small>Hội thoại</small>
+          <div class="on">Tờ trình kế hoạch CĐS</div>
+          <div>Tổng hợp báo cáo quý</div>
+          <div>Rà soát quyết định</div>
+        </div>
+        <div class="mock-chat">
+          <div class="bubble-u">Soạn tờ trình kế hoạch chuyển đổi số năm 2027, theo mẫu của đơn vị</div>
+          <div class="bubble-a">
+            <div class="tool"><b>✓</b> Đọc tệp ke-hoach-2026.docx</div>
+            <div class="tool"><b>✓</b> Tạo to-trinh-cds-2027.docx</div>
+            <p>Đã soạn tờ trình theo thể thức <span class="cite">Nghị định 30/2020/NĐ-CP</span>: Quốc hiệu, số ký hiệu, nơi nhận và người ký lấy từ hồ sơ đơn vị.</p>
+          </div>
+          <div class="alert"><strong>MẬT</strong><span>Tệp bao-cao-an-ninh.docx có dấu độ mật nên đã bị chặn, không gửi lên AI.</span></div>
+          <div class="mock-input"><span>Nhập yêu cầu…</span><span>Gửi</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section id="tinh-nang" class="band">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>Làm việc văn phòng nhanh hơn, vẫn đúng quy định</h2>
+        <p>Mọi thứ trong một ứng dụng: trò chuyện với AI, mở và sửa tài liệu ngay bên cạnh, giao việc lặp lại cho máy.</p>
+      </div>
+      <div class="grid">
+        <div class="card">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg></div>
+          <h3>Văn bản đúng thể thức</h3>
+          <p>Khai báo hồ sơ đơn vị một lần (cơ quan, người ký, văn phong). AI soạn theo thể thức Nghị định 30/2020/NĐ-CP và xuất ra Word.</p>
+        </div>
+        <div class="card">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg></div>
+          <h3>Word, Excel, Markdown</h3>
+          <p>Mở, xem và sửa .docx, .xlsx, văn bản ngay trong ứng dụng. Gắn tệp vào hội thoại hoặc gọi tệp bằng <span class="mono">@</span>.</p>
+        </div>
+        <div class="card">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 7h14M7 7l-4 8a4 4 0 0 0 8 0zM17 7l-4 8a4 4 0 0 0 8 0z"/></svg></div>
+          <h3>Nhận diện căn cứ pháp lý</h3>
+          <p>Trích dẫn Luật, Nghị định, Thông tư, Quyết định trong câu trả lời được đánh dấu, bấm vào để tra trên Cơ sở dữ liệu văn bản pháp luật.</p>
+        </div>
+        <div class="card">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+          <h3>Điều khiển máy tính</h3>
+          <p>AI thao tác trên cửa sổ và trình duyệt thay bạn: nhập liệu lên phần mềm nghiệp vụ, tra cứu cổng thông tin. Thao tác rủi ro luôn chờ bạn duyệt.</p>
+        </div>
+        <div class="card">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+          <h3>Tác vụ định kỳ</h3>
+          <p>Hẹn giờ cho AI tự tổng hợp báo cáo, rà soát thư mục hay chạy một quy trình hằng ngày, hằng tuần.</p>
+        </div>
+        <div class="card">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+          <h3>Kỹ năng và quy tắc riêng</h3>
+          <p>Nhập bộ kỹ năng (skills) dùng chung của đơn vị, viết quy tắc làm việc cho AI, kết nối thêm công cụ qua MCP.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="bao-mat">
+    <div class="wrap sec2">
+      <div>
+        <div class="sec-head" style="margin-bottom:0">
+          <h2>Thiết kế cho môi trường công vụ</h2>
+          <p>AI chạy trên mô hình đám mây, nên eGovAI kiểm soát chặt những gì được gửi đi và những gì AI được phép làm trên máy.</p>
+        </div>
+        <div class="risk">
+          <div><span class="pill p-read">Chỉ đọc</span>Xem cửa sổ, chụp màn hình: không cần duyệt</div>
+          <div><span class="pill p-low">Rủi ro thấp</span>Cuộn, chuyển ô, mở trang tin cậy: cần duyệt</div>
+          <div><span class="pill p-high">Rủi ro cao</span>Nhập dữ liệu, gửi biểu mẫu: luôn cần duyệt</div>
+        </div>
+      </div>
+      <ul class="checks">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg><div><strong>Chặn tài liệu mật</strong><span>Tệp có dấu MẬT, TỐI MẬT, TUYỆT MẬT bị chặn trước khi gửi lên AI, theo Luật Bảo vệ bí mật nhà nước 2018.</span></div></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><div><strong>Mã hóa dữ liệu trên máy</strong><span>Lịch sử trò chuyện và cài đặt được mã hóa bằng Windows DPAPI, gắn với tài khoản Windows của bạn.</span></div></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11h6M9 15h6M9 7h6"/><rect x="4" y="3" width="16" height="18" rx="2"/></svg><div><strong>Nhật ký kiểm toán</strong><span>Mọi yêu cầu và thao tác được ghi lại, không sửa được, xuất ra Excel khi cần giải trình.</span></div></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></svg><div><strong>Không mở tệp chạy được</strong><span>AI không thể mở .exe, .bat, .ps1, .lnk hay các tệp có thể chạy mã trên máy.</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="cai-dat" class="band">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>Cài đặt trong ba bước</h2>
+        <p>Không cần quyền quản trị, không cần cấu hình phức tạp.</p>
+      </div>
+      <div class="steps">
+        <div class="step"><h3>Tải và chạy bộ cài</h3><p>Tải tệp <span class="mono" data-file>eGovAI-Setup.exe</span> rồi bấm đúp để cài.</p></div>
+        <div class="step"><h3>Cài lõi AI</h3><p>Lần đầu mở, bấm “Cài đặt” để ứng dụng tự cài Google Antigravity (<span class="mono">agy</span>).</p></div>
+        <div class="step"><h3>Đăng nhập Google</h3><p>Đăng nhập bằng tài khoản Google, chọn thư mục làm việc và bắt đầu trò chuyện.</p></div>
+      </div>
+      <p class="note">Bộ cài chưa được ký số, nên Windows có thể hiện cảnh báo SmartScreen. Bấm <b>Thông tin thêm</b> → <b>Vẫn chạy</b>. Có thể đối chiếu mã SHA-256 của tệp tải về với tệp <span class="mono">SHA256SUMS.txt</span> trên trang phát hành.</p>
+    </div>
+  </section>
+
+  <section id="tai-ve">
+    <div class="wrap">
+      <div class="dl">
+        <img src="logo.svg" alt="">
+        <h2>Tải eGovAI</h2>
+        <p>Miễn phí, mã nguồn mở theo giấy phép MIT. Dành cho Windows 10 và Windows 11 (64-bit).</p>
+        <div class="cta">
+          <a class="btn btn-primary" href="https://github.com/toilatrung/eGovAI/releases/latest" data-dl>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-5-5m5 5 5-5M5 21h14"/></svg>
+            <span data-dl-label>Tải bộ cài cho Windows</span>
+          </a>
+          <a class="btn btn-ghost" href="https://github.com/toilatrung/eGovAI/releases">Các phiên bản trước</a>
+        </div>
+        <div class="hash" data-notes></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <span>© 2026 eGovAI · Giấy phép MIT</span>
+    <span><a href="https://github.com/toilatrung/eGovAI">Mã nguồn</a> · <a href="https://github.com/toilatrung/eGovAI/releases">Phát hành</a> · <a href="https://github.com/toilatrung/eGovAI/issues">Báo lỗi</a></span>
+  </div>
+</footer>
+
+<script>
+// Lấy bản phát hành mới nhất từ GitHub để nút "Tải" trỏ thẳng tới bộ cài.
+// Nếu không gọi được API, nút vẫn dẫn tới trang Releases.
+(function () {
+  var REPO = 'toilatrung/eGovAI';
+  function mb(b) { return (b / 1048576).toFixed(0) + ' MB'; }
+  fetch('https://api.github.com/repos/' + REPO + '/releases/latest', { headers: { Accept: 'application/vnd.github+json' } })
+    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function (rel) {
+      var exe = (rel.assets || []).filter(function (a) { return /\.exe$/i.test(a.name); })[0];
+      if (!exe) return;
+      document.querySelectorAll('[data-dl]').forEach(function (a) {
+        a.href = exe.browser_download_url;
+        a.setAttribute('download', '');
+      });
+      document.querySelectorAll('[data-ver]').forEach(function (e) { e.textContent = 'Phiên bản ' + rel.tag_name.replace(/^v/, ''); });
+      document.querySelectorAll('[data-size]').forEach(function (e) { e.textContent = mb(exe.size) + ' · Windows 10/11 64-bit'; });
+      document.querySelectorAll('[data-file]').forEach(function (e) { e.textContent = exe.name; });
+      document.querySelectorAll('[data-dl-label]').forEach(function (e) { e.textContent = 'Tải ' + exe.name; });
+      var n = document.querySelector('[data-notes]');
+      if (n) n.innerHTML = 'Phát hành ' + new Date(rel.published_at).toLocaleDateString('vi-VN') +
+        ' · <a href="' + rel.html_url + '">Ghi chú phát hành</a>';
+    })
+    .catch(function () {});
+})();
+</script>
+</body>
+</html>
