@@ -12,7 +12,7 @@ export const AGENCY_BLOCK_END = '<!-- GOOGLEAI:AGENCY_RULES:END -->'
 export function formatAgencyProfileSummary(profile: AgencyRulesProfile): string {
   if (!profile.enabled) return ''
 
-  const lines: string[] = ['## Hồ sơ đơn vị & Quy tắc công vụ (GoogleAI)']
+  const lines: string[] = ['## Hồ sơ đơn vị & Quy tắc công vụ (eGovAI)']
 
   const orgDetails: string[] = []
   if (profile.parentAgency.trim()) orgDetails.push(`- Cơ quan chủ quản: ${profile.parentAgency.trim()}`)

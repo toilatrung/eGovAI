@@ -19,6 +19,18 @@ pnpm build        # build vào out/
 pnpm package      # đóng gói bộ cài vào dist/ (cần .NET Framework 4.x csc.exe)
 ```
 
+## Phát hành phiên bản mới
+
+1. Tăng `version` trong `package.json` (ví dụ `0.2.0`).
+2. Viết ghi chú vào `docs/releases/v0.2.0.md`.
+3. Commit, rồi chạy:
+
+   ```powershell
+   pnpm release
+   ```
+
+Script [`scripts/release.ps1`](scripts/release.ps1) chạy kiểm thử, đóng gói bộ cài, tính SHA-256, tạo tag, đẩy lên GitHub và tạo Release kèm bộ cài.
+
 ## Cấu trúc
 
 - `src/main` — tiến trình chính Electron (agent, dịch vụ: kiểm toán, phân loại mật, computer use, tài liệu, lập lịch…)

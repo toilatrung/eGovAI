@@ -1,9 +1,9 @@
 {
-  "name": "googleai-desktop",
+  "name": "egovai-desktop",
   "version": "0.1.0",
-  "description": "GoogleAI — Giao diện desktop Tiếng Việt cho Google Antigravity chính thức",
+  "description": "eGovAI — Giao diện desktop Tiếng Việt cho Google Antigravity chính thức",
   "main": "./out/main/index.js",
-  "author": "GoogleAI VN",
+  "author": "eGovAI",
   "license": "MIT",
   "scripts": {
     "dev": "electron-vite dev",
@@ -14,7 +14,8 @@
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "pnpm run typecheck:node && pnpm run typecheck:web",
     "test": "vitest run",
-    "package": "powershell -NoProfile -ExecutionPolicy Bypass -File installer/build-installer.ps1"
+    "package": "powershell -NoProfile -ExecutionPolicy Bypass -File installer/build-installer.ps1",
+    "release": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release.ps1"
   },
   "dependencies": {
     "@fontsource/montserrat": "5.1.0",

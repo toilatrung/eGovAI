@@ -298,7 +298,7 @@ export async function checkAgyStatus(
 /**
  * Runs the official `agy acp --login` Google OAuth2 browser authentication flow
  * completely hidden (no black terminal window). Emits OAuth URL and lifecycle events
- * directly to the GoogleAI GUI modal.
+ * directly to the eGovAI GUI modal.
  */
 export class GoogleOAuthManager {
   private proc: ChildProcessWithoutNullStreams | null = null
