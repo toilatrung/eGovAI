@@ -4,7 +4,9 @@
 #   2. Viết ghi chú phát hành vào docs\releases\v0.2.0.md
 #   3. powershell -ExecutionPolicy Bypass -File scripts\release.ps1
 #      (thêm -SkipBuild nếu dist\eGovAI-Setup-<version>.exe đã được đóng gói sẵn)
-param([switch]$SkipBuild)
+#   Mặc định bắt buộc ký số (xem docs\code-signing.md). -AllowUnsigned để phát hành bản chưa ký
+#   (Smart App Control trên Windows 11 sẽ chặn bản đó).
+param([switch]$SkipBuild, [switch]$AllowUnsigned)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
@@ -26,10 +28,23 @@ if ($LASTEXITCODE -ne 0) { throw 'Kiểm thử thất bại' }
 
 if (-not $SkipBuild) {
   Step 'Đóng gói bộ cài'
-  & pnpm.cmd run package
+  $buildArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $root 'installer\build-installer.ps1'))
+  if (-not $AllowUnsigned) { $buildArgs += '-RequireSign' }
+  & powershell @buildArgs
   if ($LASTEXITCODE -ne 0) { throw 'Đóng gói thất bại' }
 }
 if (-not (Test-Path $exe)) { throw "Không thấy bộ cài: $exe" }
+
+Step 'Kiểm tra chữ ký số'
+$sig = Get-AuthenticodeSignature $exe
+Write-Host ("Trạng thái: {0}  Người ký: {1}" -f $sig.Status, $(if ($sig.SignerCertificate) { $sig.SignerCertificate.Subject } else { '(không có)' }))
+if ($sig.Status -ne 'Valid') {
+  if ($AllowUnsigned) { Write-Host 'CẢNH BÁO: phát hành bộ cài CHƯA KÝ — Smart App Control sẽ chặn trên Windows 11.' -ForegroundColor Yellow }
+  else { throw "Bộ cài chưa được ký hợp lệ ($($sig.Status)). Cấu hình ký số theo docs\code-signing.md hoặc dùng -AllowUnsigned." }
+}
+elseif (-not $sig.TimeStamperCertificate) {
+  throw 'Bộ cài đã ký nhưng thiếu tem thời gian (timestamp) — chữ ký sẽ mất hiệu lực khi chứng thư hết hạn.'
+}
 
 Step 'Tính SHA-256'
 $sums = Join-Path $root 'dist\SHA256SUMS.txt'

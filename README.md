@@ -8,6 +8,8 @@ Trang giới thiệu: **https://egovai.vercel.app**
 
 Hoặc xem trang [Releases](../../releases) — tải `eGovAI-Setup-<phiên bản>.exe` (Windows 10/11, 64-bit).
 
+> Windows 11 Smart App Control chặn bản chưa ký số. Xem [docs/code-signing.md](docs/code-signing.md) để biết lý do, cách ký số khi đóng gói và lưu ý cho người dùng.
+
 ## Phát triển
 
 Yêu cầu: Node.js 20+, pnpm.
@@ -31,7 +33,7 @@ pnpm package      # đóng gói bộ cài vào dist/ (cần .NET Framework 4.x c
    pnpm release
    ```
 
-Script [`scripts/release.ps1`](scripts/release.ps1) chạy kiểm thử, đóng gói bộ cài, tính SHA-256, tạo tag, đẩy lên GitHub và tạo Release kèm bộ cài.
+Script [`scripts/release.ps1`](scripts/release.ps1) chạy kiểm thử, đóng gói bộ cài, tính SHA-256, tạo tag, đẩy lên GitHub và tạo Release kèm bộ cài. Mặc định script bắt buộc bộ cài phải được ký số hợp lệ — cấu hình chứng thư theo [docs/code-signing.md](docs/code-signing.md) (hoặc thêm `-AllowUnsigned`).
 
 ## Trang giới thiệu
 

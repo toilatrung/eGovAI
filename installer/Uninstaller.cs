@@ -8,11 +8,7 @@ using System.Reflection;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
-[assembly: AssemblyTitle("Gỡ cài đặt eGovAI")]
-[assembly: AssemblyProduct("eGovAI")]
-[assembly: AssemblyCompany("Nhóm phát triển eGovAI")]
-[assembly: AssemblyVersion("0.1.0.0")]
-[assembly: AssemblyFileVersion("0.1.0.0")]
+// Thông tin phiên bản/công ty được build-installer.ps1 sinh từ package.json vào build\AssemblyInfo.Uninstaller.cs.
 
 namespace EGovAIUninstall
 {

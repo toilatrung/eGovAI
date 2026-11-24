@@ -21,13 +21,8 @@ using System.Windows.Shapes;
 using System.Windows.Threading;
 using Microsoft.Win32;
 
-[assembly: AssemblyTitle("Bộ cài eGovAI")]
-[assembly: AssemblyProduct("eGovAI")]
-[assembly: AssemblyDescription("Trình cài đặt eGovAI 0.1.0")]
-[assembly: AssemblyCompany("Nhóm phát triển eGovAI")]
-[assembly: AssemblyCopyright("MIT License")]
-[assembly: AssemblyVersion("0.1.0.0")]
-[assembly: AssemblyFileVersion("0.1.0.0")]
+// Thông tin phiên bản/công ty (AssemblyCompany, AssemblyFileVersion…) được build-installer.ps1 sinh ra
+// từ package.json vào build\AssemblyInfo.Installer.cs và biên dịch cùng tệp này.
 
 namespace EGovAISetup
 {
@@ -82,7 +77,12 @@ namespace EGovAISetup
     internal sealed class SetupController
     {
         private const string AppName = "eGovAI";
-        private const string AppVersion = "0.1.0";
+        private static readonly string AppVersion = ReadAppVersion();
+        private static string ReadAppVersion()
+        {
+            var a = (AssemblyInformationalVersionAttribute)Attribute.GetCustomAttribute(Assembly.GetExecutingAssembly(), typeof(AssemblyInformationalVersionAttribute));
+            return a != null && !string.IsNullOrEmpty(a.InformationalVersion) ? a.InformationalVersion : "0.1.0";
+        }
         private const string Publisher = "Nhóm phát triển eGovAI";
         private const string ExeName = "eGovAI.exe";
         private const string UninstallExeName = "Uninstall eGovAI.exe";
@@ -324,7 +324,7 @@ namespace EGovAISetup
             {
                 case Page.License:
                     headTitle.Text = "Điều khoản giấy phép";
-                    headSub.Text = "Vui lòng đọc kỹ các điều khoản dưới đây trước khi cài đặt eGovAI 0.1.0 lên máy tính của bạn.";
+                    headSub.Text = "Vui lòng đọc kỹ các điều khoản dưới đây trước khi cài đặt eGovAI " + AppVersion + " lên máy tính của bạn.";
                     SetFootOpt("Tôi đồng ý với các điều khoản giấy phép", licenseAccepted);
                     SetButtons(false, "Tiếp tục", licenseAccepted, "Hủy", true);
                     break;
