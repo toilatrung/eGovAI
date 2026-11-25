@@ -505,7 +505,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   effort: 'medium',
   mode: 'default',
   useSandbox: false,
-  computerUseEnabled: false,
+  computerUseEnabled: true,
   fastModelForComputerUse: false,
   agyPathOverride: '',
   agencyProfile: { ...DEFAULT_AGENCY_PROFILE },

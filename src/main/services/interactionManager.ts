@@ -11,27 +11,45 @@ interface PendingEntry {
   resolve: (res: InteractionResponse) => void
 }
 
+export interface InteractionManagerOptions {
+  /**
+   * Mặc định true: trong mỗi lượt trả lời, chỉ hỏi xác nhận người dùng MỘT lần trước khi thực thi
+   * thao tác trình duyệt/điều khiển máy; nếu người dùng xác nhận thì tự động thực hiện các bước
+   * tiếp theo trong cùng lượt đó mà không hỏi lặp lại.
+   */
+  askOncePerTurn?: boolean
+}
+
 export class InteractionManager {
   private pending = new Map<string, PendingEntry>()
   /**
    * "Luôn cho phép trong phiên" CHỈ bao phủ thao tác rủi ro thấp ('low').
-   * Thao tác rủi ro cao (nhập liệu, nhấp chuột, Enter, mở ứng dụng, xóa...) luôn hỏi lại.
+   * Thao tác rủi ro cao luôn tuân theo xác nhận của lượt (hoặc hỏi lại nếu tắt askOncePerTurn).
    */
   private sessionAutoApproveLowRisk = false
+  /** Người dùng đã xác nhận thực hiện cho lượt trả lời hiện tại (tự xóa khi kết thúc lượt). */
+  private turnApproved = false
+  private readonly askOncePerTurn: boolean
   /** Phạm vi điều khiển theo việc (tự hết hạn khi hết lượt hoặc sau 10 phút). */
   private activeScope: TaskScopeGrant | null = null
   private onDispatch: (req: InteractionRequest) => void
 
-  constructor(onDispatch: (req: InteractionRequest) => void) {
+  constructor(onDispatch: (req: InteractionRequest) => void, options?: InteractionManagerOptions) {
     this.onDispatch = onDispatch
+    this.askOncePerTurn = options?.askOncePerTurn ?? true
   }
 
   isSessionAutoApproved(): boolean {
     return this.sessionAutoApproveLowRisk
   }
 
+  isTurnApproved(): boolean {
+    return this.turnApproved
+  }
+
   resetSessionAutoApprove(): void {
     this.sessionAutoApproveLowRisk = false
+    this.turnApproved = false
     this.activeScope = null
   }
 
@@ -62,6 +80,7 @@ export class InteractionManager {
 
   clearTaskScope(): void {
     this.activeScope = null
+    this.turnApproved = false
   }
 
   async requestScopeApproval(params: {
@@ -71,6 +90,15 @@ export class InteractionManager {
   }): Promise<InteractionResponse> {
     const appsList = params.apps.map((a) => a.trim()).filter(Boolean)
     const purpose = params.purpose.trim() || 'thực hiện yêu cầu của bạn'
+    if (this.askOncePerTurn && this.turnApproved) {
+      if (appsList.length > 0) {
+        this.grantTaskScope(appsList, purpose)
+      }
+      return {
+        id: 'turn-approved',
+        approved: true
+      }
+    }
     const res = await this.request({
       kind: 'approval',
       title: 'Xin phép điều khiển ứng dụng',
@@ -83,16 +111,20 @@ export class InteractionManager {
         risk: 'low',
         summary: params.lines ?? [
           `Ứng dụng được phép: ${appsList.join(', ')}`,
-          'Tự chạy không hỏi lại: nhấp chuột thường, focus, cuộn, chụp giao diện/màn hình trong các ứng dụng trên.',
-          'Vẫn luôn hỏi lại: gõ/nhập nội dung, nhấn Enter hoặc nút gửi/nộp/xác nhận, xóa, mở ứng dụng ngoài phạm vi hoặc URL lạ.',
-          'Tự hết hạn sau lượt trả lời này hoặc sau 10 phút.'
+          'Chỉ hỏi xác nhận một lần cho yêu cầu này; nếu bạn đồng ý, trợ lý sẽ thực hiện trọn vẹn các bước tiếp theo trong lượt.',
+          'Tự hết hạn ngay khi lượt trả lời kết thúc.'
         ]
       },
       allowAttachments: false
     })
 
-    if (res.approved && appsList.length > 0) {
-      this.grantTaskScope(appsList, purpose)
+    if (res.approved) {
+      if (this.askOncePerTurn) {
+        this.turnApproved = true
+      }
+      if (appsList.length > 0) {
+        this.grantTaskScope(appsList, purpose)
+      }
     }
     return res
   }
@@ -111,6 +143,13 @@ export class InteractionManager {
     risk?: DesktopRisk
   }): Promise<InteractionResponse> {
     const risk: DesktopRisk = params.risk ?? 'high'
+    const isDirectUserQuestion = params.toolName === 'desktop_ask_user'
+    if (this.askOncePerTurn && this.turnApproved && !isDirectUserQuestion) {
+      return {
+        id: 'turn-approved',
+        approved: true
+      }
+    }
     if (this.canAutoApprove(risk)) {
       return {
         id: 'auto-approved',
@@ -128,10 +167,13 @@ export class InteractionManager {
       allowAttachments: false
     })
 
-    if (res.approved && res.alwaysAllowSession) {
-      // Dù người dùng bấm "Luôn cho phép" trên thao tác rủi ro cao, chỉ thao tác rủi ro thấp
-      // về sau mới được tự duyệt.
-      this.sessionAutoApproveLowRisk = true
+    if (res.approved) {
+      if (this.askOncePerTurn && !isDirectUserQuestion) {
+        this.turnApproved = true
+      }
+      if (res.alwaysAllowSession) {
+        this.sessionAutoApproveLowRisk = true
+      }
     }
     return res
   }
@@ -178,6 +220,7 @@ export class InteractionManager {
 
   cancelAll(reason = 'Phiên làm việc đã dừng hoặc hủy bỏ.'): void {
     this.activeScope = null
+    this.turnApproved = false
     for (const [id, entry] of this.pending.entries()) {
       entry.resolve({
         id,

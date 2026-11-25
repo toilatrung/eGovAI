@@ -256,20 +256,61 @@ describe('describeDesktopAction', () => {
   })
 })
 
-describe('InteractionManager — "Luôn cho phép" và phạm vi theo việc', () => {
-  function setup(): { mgr: InteractionManager; dispatched: InteractionRequest[] } {
+describe('InteractionManager — hỏi xác nhận một lần mỗi lượt và phạm vi theo việc', () => {
+  function setup(
+    askOncePerTurn = true,
+    approved = true
+  ): { mgr: InteractionManager; dispatched: InteractionRequest[] } {
     const dispatched: InteractionRequest[] = []
-    const mgr = new InteractionManager((req) => {
-      dispatched.push(req)
-      queueMicrotask(() => mgr.respond({ id: req.id, approved: true, alwaysAllowSession: true }))
-    })
+    const mgr = new InteractionManager(
+      (req) => {
+        dispatched.push(req)
+        queueMicrotask(() =>
+          mgr.respond({ id: req.id, approved, alwaysAllowSession: approved })
+        )
+      },
+      { askOncePerTurn }
+    )
     return { mgr, dispatched }
   }
   const ask = (mgr: InteractionManager, risk?: 'low' | 'high') =>
     mgr.requestApproval({ title: 't', message: 'm', toolName: 'x', risk })
 
-  it('sau khi luôn cho phép: low tự duyệt, high vẫn hỏi lại', async () => {
-    const { mgr, dispatched } = setup()
+  it('mặc định chỉ hỏi xác nhận 1 lần trong lượt; xác nhận xong sẽ thực hiện các bước tiếp theo rồi đặt lại khi hết lượt', async () => {
+    const { mgr, dispatched } = setup(true, true)
+    const first = await ask(mgr, 'high')
+    expect(first.approved).toBe(true)
+    expect(mgr.isTurnApproved()).toBe(true)
+    expect(dispatched).toHaveLength(1)
+
+    // Các bước tiếp theo trong cùng lượt không hỏi lại
+    const second = await ask(mgr, 'high')
+    const third = await ask(mgr, 'low')
+    expect(second.approved).toBe(true)
+    expect(third.approved).toBe(true)
+    expect(dispatched).toHaveLength(1)
+
+    // Kết thúc lượt → xóa trạng thái xác nhận, lượt mới hỏi lại 1 lần
+    mgr.clearTaskScope()
+    expect(mgr.isTurnApproved()).toBe(false)
+    await ask(mgr, 'high')
+    expect(dispatched).toHaveLength(2)
+  })
+
+  it('nếu người dùng từ chối thì không cấp quyền cho các bước sau', async () => {
+    const { mgr, dispatched } = setup(true, false)
+    const first = await ask(mgr, 'high')
+    expect(first.approved).toBe(false)
+    expect(mgr.isTurnApproved()).toBe(false)
+    expect(dispatched).toHaveLength(1)
+
+    const second = await ask(mgr, 'high')
+    expect(second.approved).toBe(false)
+    expect(dispatched).toHaveLength(2)
+  })
+
+  it('chế độ nghiêm ngặt (askOncePerTurn: false): low tự duyệt sau khi luôn cho phép, high vẫn hỏi lại', async () => {
+    const { mgr, dispatched } = setup(false, true)
     await ask(mgr, 'low')
     expect(dispatched).toHaveLength(1)
     expect(mgr.isSessionAutoApproved()).toBe(true)
@@ -284,15 +325,8 @@ describe('InteractionManager — "Luôn cho phép" và phạm vi theo việc', (
     expect(dispatched[2].details?.risk).toBe('high')
   })
 
-  it('luôn cho phép trên thao tác high không mở khóa thao tác high khác', async () => {
-    const { mgr, dispatched } = setup()
-    await ask(mgr, 'high')
-    await ask(mgr, 'high')
-    expect(dispatched).toHaveLength(2)
-  })
-
-  it('không khai báo risk thì mặc định high (không tự duyệt)', async () => {
-    const { mgr, dispatched } = setup()
+  it('chế độ nghiêm ngặt: không khai báo risk thì mặc định high (không tự duyệt)', async () => {
+    const { mgr, dispatched } = setup(false, true)
     await ask(mgr, 'low')
     await ask(mgr)
     expect(dispatched).toHaveLength(2)
@@ -323,8 +357,8 @@ describe('InteractionManager — "Luôn cho phép" và phạm vi theo việc', (
 })
 
 describe('DEFAULT_SETTINGS', () => {
-  it('điều khiển máy tính và mô hình nhanh đều tắt theo mặc định', () => {
-    expect(DEFAULT_SETTINGS.computerUseEnabled).toBe(false)
+  it('mặc định sẵn sàng tra cứu web/điều khiển máy theo xác nhận 1 lần và giữ nguyên mô hình người dùng chọn', () => {
+    expect(DEFAULT_SETTINGS.computerUseEnabled).toBe(true)
     expect(DEFAULT_SETTINGS.fastModelForComputerUse).toBe(false)
   })
 })

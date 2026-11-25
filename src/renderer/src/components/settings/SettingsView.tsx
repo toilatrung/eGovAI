@@ -794,24 +794,14 @@ export function SettingsView(): React.JSX.Element {
               </div>
             </div>
 
-            <label className="flex cursor-pointer items-start justify-between gap-4">
-              <div>
-                <div className="text-xs font-medium">
-                  Cho phép AI điều khiển trình duyệt web (Playwright) và ứng dụng Windows (agent-desktop)
-                </div>
-                <div className="mt-0.5 text-[11px] text-faint">
-                  Hỗ trợ gom chuỗi thao tác, chụp màn hình cho ứng dụng Electron (Zalo, Teams) và xin phạm vi duyệt một lần theo việc. Gõ/nhập nội dung, Enter/nút gửi-xác nhận, xóa và mở URL lạ vẫn luôn hỏi lại.
-                </div>
+            <div className="rounded-xl border border-line bg-canvas px-3 py-2.5">
+              <div className="text-xs font-medium">
+                Tự động sẵn sàng khi tra cứu web hoặc thao tác ứng dụng — chỉ hỏi xác nhận một lần
               </div>
-              <input
-                type="checkbox"
-                checked={settings.computerUseEnabled}
-                onChange={(e) =>
-                  void updateSettings({ computerUseEnabled: e.target.checked })
-                }
-                className="mt-1 h-4 w-4 accent-blue-600"
-              />
-            </label>
+              <div className="mt-0.5 text-[11px] text-faint">
+                Không cần bật công tắc thủ công. Khi trợ lý cần mở trình duyệt hoặc điều khiển ứng dụng trên máy, eGovAI sẽ hiện thông báo xin xác nhận một lần cho lượt làm việc đó; nếu bạn đồng ý, trợ lý sẽ thực hiện trọn vẹn.
+              </div>
+            </div>
 
             {(() => {
               const fastModel = pickFastComputerUseModel(agyStatus?.models ?? [])

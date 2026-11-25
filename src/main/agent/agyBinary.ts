@@ -1,6 +1,6 @@
 import { existsSync } from 'fs'
 import { userInfo } from 'os'
-import { join } from 'path'
+import { dirname, join } from 'path'
 import { execFile, spawn, type ChildProcessWithoutNullStreams } from 'child_process'
 import { promisify } from 'util'
 import type {
@@ -30,12 +30,31 @@ export function extractOAuthUrl(rawText: string): string | null {
   return fallback ? fallback[0] : null
 }
 
-export function resolveAgyBinary(overridePath?: string): string | null {
+export function getBundledAgyCandidates(resourcesPathOverride?: string): string[] {
+  const exeName = process.platform === 'win32' ? 'agy.exe' : 'agy'
+  const candidates: string[] = []
+  const resPath = resourcesPathOverride ?? process.resourcesPath
+  if (resPath) {
+    candidates.push(join(resPath, 'bin', exeName))
+  }
+  if (!resourcesPathOverride && process.execPath) {
+    candidates.push(join(dirname(process.execPath), 'resources', 'bin', exeName))
+  }
+  return candidates
+}
+
+export function resolveAgyBinary(
+  overridePath?: string,
+  resourcesPathOverride?: string
+): string | null {
   const candidates: string[] = []
 
   if (overridePath && overridePath.trim()) {
     candidates.push(overridePath.trim())
   }
+
+  // Ưu tiên lõi agy.exe được đóng gói sẵn bên trong eGovAI (resources/bin/agy.exe).
+  candidates.push(...getBundledAgyCandidates(resourcesPathOverride))
 
   if (process.env.LOCALAPPDATA) {
     candidates.push(join(process.env.LOCALAPPDATA, 'agy', 'bin', 'agy.exe'))
@@ -246,44 +265,41 @@ export async function checkAgyStatus(
     }
   }
 
-  let version: string | null = null
-  try {
-    const { stdout } = await execFileAsync(binaryPath, ['--version'], {
+  // Chạy song song --version, models và phát hiện hồ sơ tài khoản để rút ngắn thời gian khởi động.
+  const [versionRes, modelsRes, accountRes] = await Promise.all([
+    execFileAsync(binaryPath, ['--version'], {
       timeout: 8000,
       windowsHide: true
     })
-    version = stdout.trim().split(/\r?\n/)[0] ?? null
-  } catch (err) {
+      .then((res) => ({ ok: true as const, stdout: res.stdout }))
+      .catch((err) => ({ ok: false as const, err })),
+    execFileAsync(binaryPath, ['models'], {
+      timeout: 20000,
+      windowsHide: true
+    })
+      .then((res) => ({ ok: true as const, stdout: res.stdout }))
+      .catch((err) => ({ ok: false as const, err })),
+    detectAccountProfile(customName, customEmail).catch(() => null)
+  ])
+
+  if (!versionRes.ok) {
     return {
       installed: false,
       binaryPath,
       version: null,
       authenticated: false,
       models: [],
-      error: err instanceof Error ? err.message : 'Không thể kiểm tra phiên bản agy.'
+      error:
+        versionRes.err instanceof Error
+          ? versionRes.err.message
+          : 'Không thể kiểm tra phiên bản agy.'
     }
   }
 
-  try {
-    const { stdout } = await execFileAsync(binaryPath, ['models'], {
-      timeout: 20000,
-      windowsHide: true
-    })
-    const models = parseAgyModelsOutput(stdout)
-    const authenticated = models.length > 0
-    const account = authenticated
-      ? await detectAccountProfile(customName, customEmail)
-      : null
-    return {
-      installed: true,
-      binaryPath,
-      version,
-      authenticated,
-      models,
-      account
-    }
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
+  const version = versionRes.stdout.trim().split(/\r?\n/)[0] ?? null
+
+  if (!modelsRes.ok) {
+    const message = modelsRes.err instanceof Error ? modelsRes.err.message : String(modelsRes.err)
     return {
       installed: true,
       binaryPath,
@@ -292,6 +308,17 @@ export async function checkAgyStatus(
       models: [],
       error: message
     }
+  }
+
+  const models = parseAgyModelsOutput(modelsRes.stdout)
+  const authenticated = models.length > 0
+  return {
+    installed: true,
+    binaryPath,
+    version,
+    authenticated,
+    models,
+    account: authenticated ? accountRes : null
   }
 }
 

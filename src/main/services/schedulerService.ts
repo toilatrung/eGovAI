@@ -5,7 +5,7 @@ import type { StorageService } from './storageService'
 
 export class SchedulerService {
   private timer: NodeJS.Timeout | null = null
-  private adapter = new AgyCliAdapter()
+  private adapter = new AgyCliAdapter({ keepAlive: false })
   private runningTaskIds = new Set<string>()
   private onTasksUpdated: (tasks: ScheduledTask[]) => void
 

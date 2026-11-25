@@ -619,10 +619,22 @@ namespace EGovAISetup
             while (true)
             {
                 var running = Process.GetProcessesByName("eGovAI").Where(p => IsInDir(p, installDir)).ToList();
-                if (running.Count == 0) return true;
+                if (running.Count == 0)
+                {
+                    // Đóng tiến trình lõi agy.exe còn chạy từ thư mục cài đặt (nếu có) để tránh khóa tệp khi nâng cấp.
+                    foreach (var p in Process.GetProcessesByName("agy").Where(x => IsInDir(x, installDir)))
+                    {
+                        try { p.Kill(); p.WaitForExit(3000); } catch { }
+                    }
+                    return true;
+                }
                 if (silent)
                 {
                     foreach (var p in running) { try { p.Kill(); p.WaitForExit(5000); } catch { } }
+                    foreach (var p in Process.GetProcessesByName("agy").Where(x => IsInDir(x, installDir)))
+                    {
+                        try { p.Kill(); p.WaitForExit(3000); } catch { }
+                    }
                     return true;
                 }
                 var r = MessageBox.Show(win, "eGovAI đang chạy. Vui lòng đóng ứng dụng rồi bấm “OK” để tiếp tục, hoặc “Cancel” để quay lại.",
@@ -647,6 +659,7 @@ namespace EGovAISetup
         private static string PhaseFor(string rel)
         {
             string r = rel.Replace('\\', '/').ToLowerInvariant();
+            if (r.StartsWith("resources/bin/agy")) return "Đang cài đặt lõi AI (Antigravity CLI)…";
             if (r.StartsWith("resources/app/out/renderer")) return "Đang chép giao diện tiếng Việt…";
             if (r.StartsWith("resources/app/node_modules/agent-desktop") || r.StartsWith("resources/app/node_modules/playwright"))
                 return "Đang cài bộ công cụ điều khiển máy tính…";

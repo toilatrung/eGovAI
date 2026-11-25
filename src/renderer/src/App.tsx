@@ -23,7 +23,8 @@ export function App(): React.JSX.Element {
     handleStreamEvent,
     handleOAuthEvent,
     enqueueInteraction,
-    setScheduledTasks
+    setScheduledTasks,
+    openInAppBrowser
   } = useAppStore()
   const isLight = settings.theme === 'light'
 
@@ -43,13 +44,17 @@ export function App(): React.JSX.Element {
     const unsubInteraction = window.googleAI.onInteractionRequest((req) => {
       enqueueInteraction(req)
     })
+    const unsubBrowser = window.googleAI.onBrowserOpen((url) => {
+      openInAppBrowser(url || undefined)
+    })
     return () => {
       unsubStream()
       unsubSched()
       unsubOAuth()
       unsubInteraction()
+      unsubBrowser()
     }
-  }, [bootstrap, handleStreamEvent, handleOAuthEvent, enqueueInteraction, setScheduledTasks])
+  }, [bootstrap, handleStreamEvent, handleOAuthEvent, enqueueInteraction, setScheduledTasks, openInAppBrowser])
 
   return (
     <div

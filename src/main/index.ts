@@ -28,6 +28,7 @@ import {
   listDesktopWindows
 } from './services/computerUseService'
 import { DesktopMcpServer } from './services/desktopMcpServer'
+import { InAppBrowserService } from './services/inAppBrowserService'
 import { InteractionManager } from './services/interactionManager'
 import {
   createBlankDocument,
@@ -59,6 +60,7 @@ let mainWindow: BrowserWindow | null = null
 let storageService: StorageService
 let schedulerService: SchedulerService
 let desktopMcpServer: DesktopMcpServer | null = null
+let inAppBrowserService: InAppBrowserService | null = null
 let interactionManager: InteractionManager | null = null
 let auditLog: AuditLogService
 let auditTracker: AgentAuditTracker
@@ -103,7 +105,8 @@ function createWindow(): void {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
-      webSecurity: true
+      webSecurity: true,
+      webviewTag: true
     }
   })
 
@@ -183,6 +186,13 @@ function registerIpcHandlers(): void {
       return true
     }
     return false
+  })
+
+  ipcMain.handle('browser:register', (_event, webContentsId: number | null) => {
+    inAppBrowserService?.registerWebContents(
+      typeof webContentsId === 'number' ? webContentsId : null
+    )
+    return true
   })
 
   ipcMain.handle('agy:send', async (_event, payload: SendPromptPayload) => {
@@ -622,9 +632,18 @@ app.whenReady().then(async () => {
     }
   })
 
+  inAppBrowserService = new InAppBrowserService({
+    onRequestOpen: (url) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('browser:open', url ?? '')
+      }
+    }
+  })
+
   desktopMcpServer = new DesktopMcpServer(
-    () => storageService.getState().settings.computerUseEnabled,
-    interactionManager
+    () => true,
+    interactionManager,
+    inAppBrowserService
   )
   try {
     await desktopMcpServer.start()

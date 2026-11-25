@@ -55,6 +55,17 @@ const googleAIApi = {
   cancelOAuth: (): Promise<boolean> => ipcRenderer.invoke('agy:oauthCancel'),
   openExternalUrl: (url: string): Promise<boolean> =>
     ipcRenderer.invoke('agy:openExternalUrl', url),
+  registerInAppBrowser: (webContentsId: number | null): Promise<boolean> =>
+    ipcRenderer.invoke('browser:register', webContentsId),
+  onBrowserOpen: (callback: (url: string) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, url: string): void => {
+      callback(url)
+    }
+    ipcRenderer.on('browser:open', listener)
+    return () => {
+      ipcRenderer.removeListener('browser:open', listener)
+    }
+  },
   onOAuthEvent: (callback: (event: OAuthFlowEvent) => void): (() => void) => {
     const listener = (_event: Electron.IpcRendererEvent, data: OAuthFlowEvent): void => {
       callback(data)

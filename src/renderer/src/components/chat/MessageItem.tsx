@@ -54,6 +54,21 @@ export function MessageItem({ message, isLight, isLast = false }: MessageItemPro
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(message.content)
   const editRef = useRef<HTMLTextAreaElement>(null)
+  const [streamElapsedSec, setStreamElapsedSec] = useState(0)
+
+  useEffect(() => {
+    if (message.role !== 'assistant' || message.status !== 'streaming') {
+      setStreamElapsedSec(0)
+      return
+    }
+    const base = message.createdAt || Date.now()
+    const update = (): void => {
+      setStreamElapsedSec(Math.max(0, Math.floor((Date.now() - base) / 1000)))
+    }
+    update()
+    const timer = window.setInterval(update, 1000)
+    return () => window.clearInterval(timer)
+  }, [message.role, message.status, message.createdAt])
 
   useEffect(() => {
     if (!editing) return
@@ -82,9 +97,9 @@ export function MessageItem({ message, isLight, isLast = false }: MessageItemPro
   }
 
   const linkedFiles = useMemo(() => {
-    if (message.role !== 'assistant' || !message.content) return []
+    if (message.role !== 'assistant' || message.status === 'streaming' || !message.content) return []
     return extractLocalFilesFromMarkdown(message.content, activeProject?.path)
-  }, [message.role, message.content, activeProject?.path])
+  }, [message.role, message.status, message.content, activeProject?.path])
 
   const handleCopy = (): void => {
     void navigator.clipboard.writeText(message.content)
@@ -120,7 +135,7 @@ export function MessageItem({ message, isLight, isLast = false }: MessageItemPro
                       ? 'bg-sunken text-muted hover:bg-blue-100 hover:text-blue-700'
                       : 'bg-sunken text-muted ring-1 ring-line-strong hover:bg-blue-500/20 hover:text-blue-300'
                   }`}
-                  title={`Bấm để mở trong Tài liệu & Excel: ${att.path}`}
+                  title={`Bấm để mở trong Tài liệu: ${att.path}`}
                 >
                   <Paperclip className="h-3 w-3 text-blue-400" />
                   <span className="max-w-[180px] truncate">{att.name}</span>
@@ -204,6 +219,18 @@ export function MessageItem({ message, isLight, isLast = false }: MessageItemPro
 
   const isStreaming = message.status === 'streaming'
   const hasTools = Boolean(message.toolCalls && message.toolCalls.length > 0)
+  const hasContent = message.content.trim().length > 0
+  const activeTool = message.toolCalls?.find((tc) => tc.state === 'ACTIVE')
+  const activeToolLabel = activeTool
+    ? t(`tools.${activeTool.toolName}`, { defaultValue: activeTool.toolName })
+    : ''
+  const streamingStatusText = hasContent
+    ? 'Đang soạn thảo nội dung…'
+    : activeTool
+      ? `Đang chuẩn bị · ${activeToolLabel} (chưa bắt đầu viết)`
+      : hasTools
+        ? 'Đang tổng hợp để bắt đầu soạn…'
+        : t('chat.thinking')
 
   return (
     <div className="flex flex-col gap-2.5">
@@ -214,7 +241,10 @@ export function MessageItem({ message, isLight, isLast = false }: MessageItemPro
         {isStreaming && (
           <span className="inline-flex items-center gap-1.5 text-[13px] text-muted">
             <Loader2 className="h-3.5 w-3.5 animate-spin text-brand" />
-            <span>{hasTools ? t('chat.runningTools') : t('chat.thinking')}</span>
+            <span>{streamingStatusText}</span>
+            {streamElapsedSec > 0 && (
+              <span className="tabular text-[12px] text-faint">· {streamElapsedSec}s</span>
+            )}
           </span>
         )}
         {!isStreaming && message.thinkingSeconds && message.thinkingSeconds > 0.2 && (
@@ -283,7 +313,7 @@ export function MessageItem({ message, isLight, isLast = false }: MessageItemPro
                           e.preventDefault()
                           void openFileInStudio(localPath)
                         }}
-                        title={`Mở trong Tài liệu & Excel: ${localPath}`}
+                        title={`Mở trong Tài liệu: ${localPath}`}
                         className="cursor-pointer font-medium"
                         {...props}
                       >
@@ -315,7 +345,7 @@ export function MessageItem({ message, isLight, isLast = false }: MessageItemPro
                 <button
                   key={f.path}
                   onClick={() => void openFileInStudio(f.path)}
-                  title={`Mở trực tiếp trong Tài liệu & Excel: ${f.path}`}
+                  title={`Mở trực tiếp trong Tài liệu: ${f.path}`}
                   className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition ${
                     isExcel
                       ? isLight

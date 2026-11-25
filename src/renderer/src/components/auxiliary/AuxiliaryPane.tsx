@@ -1,7 +1,8 @@
 import { useRef } from 'react'
-import { FileSpreadsheet, FolderGit2, Terminal, Clock, X } from 'lucide-react'
+import { FileText, Globe, FolderGit2, Terminal, Clock, X } from 'lucide-react'
 import { useAppStore, type AuxTab } from '../../stores/useAppStore'
 import { DocumentStudioTab } from './DocumentStudioTab'
+import { WebBrowserTab } from './WebBrowserTab'
 import { FilesDiffTab } from './FilesDiffTab'
 import { TerminalTab } from './TerminalTab'
 import { ScheduledTasksTab } from './ScheduledTasksTab'
@@ -37,9 +38,14 @@ export function AuxiliaryPane(): React.JSX.Element {
   const tabs: { id: AuxTab; label: string; icon: React.JSX.Element; badge?: number }[] = [
     {
       id: 'doc',
-      label: 'Tài liệu & Excel',
-      icon: <FileSpreadsheet className="h-3.5 w-3.5" />,
+      label: 'Tài liệu',
+      icon: <FileText className="h-3.5 w-3.5" />,
       badge: openedDocs.length > 0 ? openedDocs.length : undefined
+    },
+    {
+      id: 'browser',
+      label: 'Trình duyệt',
+      icon: <Globe className="h-3.5 w-3.5" />
     },
     {
       id: 'files',
@@ -114,6 +120,7 @@ export function AuxiliaryPane(): React.JSX.Element {
 
       {/* Active Tab Content */}
       {auxTab === 'doc' && <DocumentStudioTab isLight={isLight} />}
+      <WebBrowserTab isLight={isLight} visible={auxTab === 'browser'} />
       {auxTab === 'files' && <FilesDiffTab isLight={isLight} />}
       {auxTab === 'terminal' && <TerminalTab isLight={isLight} />}
       {auxTab === 'tasks' && <ScheduledTasksTab isLight={isLight} />}

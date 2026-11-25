@@ -30,6 +30,18 @@ function ToolStep({ toolCall }: { toolCall: ToolCallBlock }): React.JSX.Element 
     Boolean(toolCall.output) || Boolean(toolCall.parameters && Object.keys(toolCall.parameters).length > 0)
   const active = toolCall.state === 'ACTIVE'
   const failed = toolCall.state === 'ERROR'
+  const startedAtRef = useRef(Date.now())
+  const [elapsedSec, setElapsedSec] = useState(0)
+
+  useEffect(() => {
+    if (!active) return
+    startedAtRef.current = Date.now()
+    setElapsedSec(0)
+    const timer = window.setInterval(() => {
+      setElapsedSec(Math.floor((Date.now() - startedAtRef.current) / 1000))
+    }, 1000)
+    return () => window.clearInterval(timer)
+  }, [active])
 
   return (
     <li className="relative pl-6">
@@ -65,7 +77,10 @@ function ToolStep({ toolCall }: { toolCall: ToolCallBlock }): React.JSX.Element 
         )}
         <span className="tabular ml-auto shrink-0 text-[12px] text-faint">
           {active ? (
-            <Loader2 className="inline h-3 w-3 animate-spin text-brand" />
+            <span className="inline-flex items-center gap-1.5">
+              {elapsedSec > 0 && <span>{elapsedSec}s</span>}
+              <Loader2 className="inline h-3 w-3 animate-spin text-brand" />
+            </span>
           ) : failed ? (
             t('tools.error')
           ) : typeof toolCall.durationSeconds === 'number' && toolCall.durationSeconds > 0 ? (

@@ -2,9 +2,11 @@
 # Cách dùng (tại thư mục gốc dự án):
 #   powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1            # build đầy đủ
 #   powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1 -SkipApp   # chỉ biên dịch lại bộ cài
-#   ... -RequireSign   # dừng lại nếu chưa cấu hình ký số (release.ps1 dùng mặc định)
+#   ... -AgyPath <path>  # chỉ định đường dẫn tệp agy.exe để đóng gói kèm (mặc định tự tìm)
+#   ... -SkipAgy         # bỏ qua đóng gói lõi agy.exe (chỉ dùng cho thử nghiệm nội bộ)
+#   ... -RequireSign     # dừng lại nếu chưa cấu hình ký số (release.ps1 dùng mặc định)
 # Ký số: đặt biến môi trường theo docs\code-signing.md (EGOVAI_SIGN_PFX, EGOVAI_SIGN_THUMBPRINT hoặc EGOVAI_SIGN_DLIB + EGOVAI_SIGN_METADATA).
-param([switch]$SkipApp, [switch]$RequireSign)
+param([switch]$SkipApp, [switch]$RequireSign, [string]$AgyPath, [switch]$SkipAgy)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
@@ -72,6 +74,32 @@ if (-not $SkipApp) {
   Rename-Item (Join-Path $stage 'electron.exe') 'eGovAI.exe'
   Remove-Item (Join-Path $stage 'resources\default_app.asar') -ErrorAction SilentlyContinue
   Move-Item $app (Join-Path $stage 'resources\app')
+
+  if (-not $SkipAgy) {
+    Step 'Đóng gói lõi AI (agy.exe)'
+    $agyCandidates = @()
+    if ($AgyPath) { $agyCandidates += $AgyPath }
+    if ($env:EGOVAI_AGY_BIN) { $agyCandidates += $env:EGOVAI_AGY_BIN }
+    if ($env:LOCALAPPDATA) { $agyCandidates += (Join-Path $env:LOCALAPPDATA 'agy\bin\agy.exe') }
+    if ($env:USERPROFILE) {
+      $agyCandidates += (Join-Path $env:USERPROFILE 'AppData\Local\agy\bin\agy.exe')
+      $agyCandidates += (Join-Path $env:USERPROFILE '.local\bin\agy.exe')
+    }
+    $cmdAgy = Get-Command agy.exe -ErrorAction SilentlyContinue
+    if ($cmdAgy) { $agyCandidates += $cmdAgy.Source }
+
+    $agySrc = $agyCandidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+    if (-not $agySrc) {
+      throw 'Không tìm thấy lõi agy.exe để đóng gói kèm. Cài đặt bằng `irm https://antigravity.google/cli/install.ps1 | iex` hoặc truyền -AgyPath <đường-dẫn-agy.exe>.'
+    }
+    $binDir = Join-Path $stage 'resources\bin'
+    New-Item -ItemType Directory $binDir -Force | Out-Null
+    $agyDest = Join-Path $binDir 'agy.exe'
+    Copy-Item $agySrc $agyDest -Force
+    $agyVer = (& $agyDest --version 2>$null | Select-Object -First 1)
+    $agySig = (Get-AuthenticodeSignature $agyDest).Status
+    Write-Host ('  Đã ghép agy.exe ({0}, {1:N1} MB, chữ ký: {2}) từ {3}' -f $agyVer, ((Get-Item $agyDest).Length / 1MB), $agySig, $agySrc) -ForegroundColor Green
+  }
 }
 if (-not (Test-Path (Join-Path $stage 'eGovAI.exe'))) { throw "Chưa có ứng dụng tại $stage. Chạy lại không kèm -SkipApp." }
 

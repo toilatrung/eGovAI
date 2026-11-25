@@ -18,6 +18,8 @@ import { useAppStore } from '../../stores/useAppStore'
 import { DocxViewer } from './DocxViewer'
 import { ExcelEditor } from './ExcelEditor'
 import { TextMarkdownEditor } from './TextMarkdownEditor'
+import { LiveDraftView } from './LiveDraftView'
+import { LIVE_DRAFT_TAB_ID } from '../../utils/liveDraft'
 
 interface DocumentStudioTabProps {
   isLight: boolean
@@ -38,6 +40,8 @@ export function DocumentStudioTab({ isLight }: DocumentStudioTabProps): React.JS
     activeProjectId,
     openedDocs,
     activeDocPath,
+    liveDraft,
+    dismissLiveDraft,
     docLoadingError,
     openLoadedDocInStudio,
     setActiveDocPath,
@@ -49,7 +53,10 @@ export function DocumentStudioTab({ isLight }: DocumentStudioTabProps): React.JS
   } = useAppStore()
 
   const activeProject = projects.find((p) => p.id === activeProjectId)
-  const activeDoc = openedDocs.find((d) => d.path === activeDocPath) ?? null
+  const isLiveDraftSelected = Boolean(liveDraft && activeDocPath === LIVE_DRAFT_TAB_ID)
+  const activeDoc = isLiveDraftSelected
+    ? null
+    : (openedDocs.find((d) => d.path === activeDocPath) ?? null)
 
   const [opening, setOpening] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
@@ -130,6 +137,38 @@ export function DocumentStudioTab({ isLight }: DocumentStudioTabProps): React.JS
         }`}
       >
         <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+          {liveDraft && (
+            <div
+              onClick={() => setActiveDocPath(LIVE_DRAFT_TAB_ID)}
+              title={liveDraft.title}
+              className={`group flex max-w-[200px] shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition ${
+                isLiveDraftSelected
+                  ? isLight
+                    ? 'bg-surface text-ink ring-1 ring-brand/40'
+                    : 'bg-sunken text-white ring-1 ring-brand/50'
+                  : isLight
+                    ? 'text-brand hover:bg-sunken'
+                    : 'text-brand hover:bg-sunken'
+              }`}
+            >
+              {liveDraft.streaming ? (
+                <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-brand" />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5 shrink-0 text-brand" />
+              )}
+              <span className="truncate">{liveDraft.title}</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  dismissLiveDraft()
+                }}
+                title="Đóng bản nháp trực tiếp"
+                className="press rounded p-0.5 opacity-60 hover:bg-black/15 hover:opacity-100"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          )}
           {openedDocs.map((doc) => {
             const selected = doc.path === activeDocPath
             return (
@@ -198,8 +237,10 @@ export function DocumentStudioTab({ isLight }: DocumentStudioTabProps): React.JS
         </div>
       )}
 
-      {/* Active Document Content OR Empty Studio Launcher */}
-      {!activeDoc ? (
+      {/* Active Document Content OR Live Realtime Draft OR Empty Studio Launcher */}
+      {isLiveDraftSelected && liveDraft ? (
+        <LiveDraftView draft={liveDraft} isLight={isLight} />
+      ) : !activeDoc ? (
         <div className="flex flex-1 flex-col items-center justify-center p-6 text-center">
           <div className="mb-3 flex items-center gap-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/15 text-blue-400">

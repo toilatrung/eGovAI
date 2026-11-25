@@ -703,6 +703,39 @@ export function ChatCanvas(): React.JSX.Element {
             </div>
           )}
 
+          {/* Thanh thư mục làm việc nằm ngang ngay phía trên khung chat */}
+          <div className="mb-1.5 flex items-center gap-2 rounded-xl border border-line bg-surface/80 px-2 py-1">
+            <ChipSelect
+              label={t('chat.project')}
+              icon={Folder}
+              value={activeProjectId ?? ''}
+              placeholder={t('chat.selectProject')}
+              tooltip={
+                activeProject
+                  ? `${t('chat.projectTooltip', { path: activeProject.path })}\n${t('chat.switchProjectHint')}`
+                  : t('chat.selectProject')
+              }
+              onChange={handlePickProject}
+              options={[
+                ...projects.map((p) => ({ value: p.id, label: p.name, short: p.name, hint: p.path })),
+                {
+                  value: ADD_PROJECT_OPTION,
+                  label: t('chat.addProjectOption'),
+                  short: t('chat.addProjectOption'),
+                  hint: t('chat.addProjectHint')
+                }
+              ]}
+            />
+            {activeProject?.path && (
+              <span
+                title={activeProject.path}
+                className="min-w-0 flex-1 truncate text-[11.5px] text-faint"
+              >
+                {activeProject.path}
+              </span>
+            )}
+          </div>
+
           {/* Composer card */}
           <div className="rounded-2xl border border-line-strong bg-surface transition-[box-shadow,border-color] duration-200 ease-[var(--ease-out-strong)] focus-within:border-brand/45 focus-within:shadow-[0_0_0_3px_var(--egov-brand-soft)]">
             {(selectedSkill || attachments.length > 0) && (
@@ -727,7 +760,7 @@ export function ChatCanvas(): React.JSX.Element {
                   <span
                     key={att.path}
                     className="inline-flex items-center gap-1.5 rounded-md bg-sunken py-1 pl-2.5 pr-1 text-[12px] text-muted"
-                    title={`Bấm để xem trong Tài liệu & Excel: ${att.path}`}
+                    title={`Bấm để xem trong Tài liệu: ${att.path}`}
                   >
                     <button
                       onClick={() => att.type !== 'folder' && void openFileInStudio(att.path)}
@@ -762,28 +795,6 @@ export function ChatCanvas(): React.JSX.Element {
             />
 
             <div className="flex flex-wrap items-center gap-1.5 px-2 pb-2 pt-1.5">
-              <ChipSelect
-                label={t('chat.project')}
-                icon={Folder}
-                value={activeProjectId ?? ''}
-                placeholder={t('chat.selectProject')}
-                tooltip={
-                  activeProject
-                    ? `${t('chat.projectTooltip', { path: activeProject.path })}\n${t('chat.switchProjectHint')}`
-                    : t('chat.selectProject')
-                }
-                onChange={handlePickProject}
-                options={[
-                  ...projects.map((p) => ({ value: p.id, label: p.name, short: p.name, hint: p.path })),
-                  {
-                    value: ADD_PROJECT_OPTION,
-                    label: t('chat.addProjectOption'),
-                    short: t('chat.addProjectOption'),
-                    hint: t('chat.addProjectHint')
-                  }
-                ]}
-              />
-
               <button
                 onClick={() => void handlePickFiles()}
                 disabled={!activeProject}
@@ -829,27 +840,6 @@ export function ChatCanvas(): React.JSX.Element {
                   { value: 'accept-edits', label: t('chat.modes.accept-edits'), hint: 'Tự sửa tệp, không hỏi lại' }
                 ]}
               />
-
-              <button
-                type="button"
-                onClick={() =>
-                  void updateSettings({ computerUseEnabled: !settings.computerUseEnabled })
-                }
-                title={
-                  computerUseStatus?.installed
-                    ? `Điều khiển máy tính qua agent-desktop v${computerUseStatus.version ?? ''} (${settings.computerUseEnabled ? 'Đang bật' : 'Đang tắt'})`
-                    : 'Chưa cài agent-desktop'
-                }
-                aria-pressed={Boolean(settings.computerUseEnabled && computerUseStatus?.installed)}
-                className={`press flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[12.5px] ${
-                  settings.computerUseEnabled && computerUseStatus?.installed
-                    ? 'border-brand/25 bg-brand-soft font-medium text-brand hover:border-brand/40'
-                    : 'border-line bg-transparent text-muted hover:bg-sunken hover:text-ink'
-                }`}
-              >
-                <Monitor className="h-[13px] w-[13px]" />
-                <span className="hidden md:inline">Điều khiển máy</span>
-              </button>
 
               {isStreaming ? (
                 <button

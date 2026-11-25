@@ -7,7 +7,12 @@ import { DESKTOP_MCP_SERVER_NAME, DESKTOP_MCP_TOOLS } from '../services/desktopM
 import { getAgyBinaryPath } from './agyBinary'
 import { NdjsonLineBuffer, parseAgyNdjsonLine } from './ndjsonParser'
 
-export function buildComposedPrompt(payload: SendPromptPayload): string {
+export interface ComposePromptOptions {
+  /** Omit static session-level instructions already sent earlier in this persistent session. */
+  omitSessionPreamble?: boolean
+}
+
+export function buildSessionPreamble(payload: SendPromptPayload): string[] {
   const sections: string[] = []
 
   if (payload.preferVietnameseReplies) {
@@ -27,22 +32,38 @@ export function buildComposedPrompt(payload: SendPromptPayload): string {
     '[Thanh Interactive Prompt hỏi ý kiến & phê duyệt: Khi cần người dùng phê duyệt kế hoạch, xác nhận thao tác quan trọng, chọn phương án hoặc bổ sung thông tin/hồ sơ còn thiếu giữa chừng, gọi công cụ MCP `desktop_ask_user` (máy chủ `egovai-desktop`) để hiện thanh Interactive Prompt ngay phía trên ô chat.]'
   )
 
+  sections.push(
+    '[Quy tắc soạn thảo nhanh: Khi soạn văn bản, báo cáo, công văn hoặc tờ trình, hãy trình bày trực tiếp toàn văn chuẩn thể thức bằng Markdown ngay trong phản hồi (ứng dụng tự hiển thị trực tiếp theo thời gian thực bên tab Tài liệu và có sẵn nút xuất Word .docx). KHÔNG mất thời gian chạy lệnh quét ổ đĩa hay dò tìm Python (`Get-ChildItem -Recurse`, `where python`...) nếu máy không có sẵn Python.]'
+  )
+
   if (payload.computerUseEnabled) {
     const isMediumOrHigherEffort =
       !payload.effort || ['medium', 'high', 'xhigh', 'max'].includes(payload.effort)
     const speedRule = isMediumOrHigherEffort
-      ? ' (5) TỐC ĐỘ THAO TÁC: Không suy luận dài dòng giữa các bước giao diện — hãy lập kế hoạch một lần ở đầu việc, gom tối đa các bước đoán trước được vào `desktop_batch` rồi thực thi gọn.'
+      ? ' (4) TỐC ĐỘ THAO TÁC: Không suy luận dài dòng giữa các bước giao diện — hãy lập kế hoạch một lần ở đầu việc, gom tối đa các bước đoán trước được vào `desktop_batch` rồi thực thi gọn.'
       : ''
     sections.push(
-      '[Chế độ Điều khiển máy tính ĐANG BẬT (máy chủ MCP `egovai-desktop` tích hợp Playwright + agent-desktop v1.3.1 + chụp ảnh màn hình): QUY TẮC TỐI ƯU NHANH & CHÍNH XÁC: ' +
-        '(1) PHẠM VI DUYỆT THEO VIỆC: Với tác vụ nhiều bước trên ứng dụng desktop (VD: Zalo, Word, Excel), gọi `desktop_request_scope({ apps, purpose })` MỘT LẦN ở đầu việc để click/focus/scroll/snapshot/screenshot trong ứng dụng đó chạy mượt không hỏi lại (nhập nội dung, Enter/nút gửi-xác nhận và xóa vẫn hỏi lại). ' +
-        '(2) GOM THAO TÁC (`desktop_batch`): Luôn gom các bước đoán trước được vào 1 lệnh `desktop_batch` (VD: mở Notepad + chờ + gõ chữ: `[{action:"launch_app",app:"notepad.exe"},{action:"wait",ms:700},{action:"type",text:"xin chào"}]`) để giảm số lượt gọi mô hình; `desktop_batch` tự trả kèm trạng thái cuối nên không cần gọi thêm `desktop_snapshot`. ' +
-        '(3) UIA TRƯỚC, ẢNH MÀN HÌNH DỰ PHÒNG: Ưu tiên `desktop_find` / cây UIA trước; nếu ứng dụng Electron (Zalo, Teams...) có cây UIA nghèo/thiếu phần tử thì dùng ngay `desktop_screenshot` (kèm `desktop_zoom` nếu chữ nhỏ) rồi dùng `desktop_click_at` theo tọa độ ảnh và `desktop_batch` (`type` không cần @ref sẽ nhập thẳng tiếng Việt vào ô đang focus). ' +
-        '(4) TÁC VỤ WEB: Ưu tiên Playwright (`web_open`, `web_snapshot`, `web_read_text`, `web_click`, `web_fill`, `web_close`). KHÔNG chạy chrome.exe hay agent-desktop qua run_command.' +
+      '[Công cụ tra cứu web & điều khiển máy tính (máy chủ MCP `egovai-desktop` tích hợp Playwright + agent-desktop + chụp ảnh màn hình) luôn sẵn sàng theo nhu cầu — ứng dụng tự hỏi xác nhận người dùng 1 lần trước khi thực thi thao tác trên máy/trình duyệt: ' +
+        '(1) GOM THAO TÁC (`desktop_batch`): Luôn gom các bước đoán trước được vào 1 lệnh `desktop_batch` (VD: mở Notepad + chờ + gõ chữ: `[{action:"launch_app",app:"notepad.exe"},{action:"wait",ms:700},{action:"type",text:"xin chào"}]`) để giảm số lượt gọi mô hình; `desktop_batch` tự trả kèm trạng thái cuối nên không cần gọi thêm `desktop_snapshot`. ' +
+        '(2) UIA TRƯỚC, ẢNH MÀN HÌNH DỰ PHÒNG: Ưu tiên `desktop_find` / cây UIA trước; nếu ứng dụng Electron (Zalo, Teams...) có cây UIA nghèo/thiếu phần tử thì dùng ngay `desktop_screenshot` (kèm `desktop_zoom` nếu chữ nhỏ) rồi dùng `desktop_click_at` theo tọa độ ảnh và `desktop_batch` (`type` không cần @ref sẽ nhập thẳng tiếng Việt vào ô đang focus). ' +
+        '(3) TÁC VỤ WEB & TRA CỨU: Ưu tiên duyệt web trực tiếp trong Trình duyệt tích hợp ngay trong ứng dụng eGovAI qua (`web_open`, `web_snapshot`, `web_read_text`, `web_click`, `web_fill`, `web_close`) mà không cần mở trình duyệt ngoài hay dùng điều khiển máy tính. KHÔNG chạy chrome.exe hay agent-desktop qua run_command.' +
         speedRule +
         ']'
     )
   }
+
+  return sections
+}
+
+export function computeSessionPreambleKey(payload: SendPromptPayload): string {
+  return buildSessionPreamble(payload).join('\n')
+}
+
+export function buildComposedPrompt(
+  payload: SendPromptPayload,
+  options?: ComposePromptOptions
+): string {
+  const sections: string[] = options?.omitSessionPreamble ? [] : buildSessionPreamble(payload)
 
   if (payload.activeSkill) {
     const codeTag = payload.activeSkill.code ? ` (Mã ${payload.activeSkill.code})` : ''
@@ -138,15 +159,161 @@ export function buildAgyCliArgs(payload: SendPromptPayload): string[] {
   return args
 }
 
+export function buildSessionKey(binaryPath: string, payload: SendPromptPayload): string {
+  const dirs = (payload.globalSkillDirs ?? [])
+    .map((d) => d.toLowerCase())
+    .sort()
+  return JSON.stringify({
+    binaryPath,
+    projectPath: payload.projectPath.toLowerCase(),
+    modelId: payload.modelId ?? '',
+    effort: payload.effort ?? '',
+    mode: payload.mode ?? 'default',
+    useSandbox: Boolean(payload.useSandbox),
+    computerUseEnabled: Boolean(payload.computerUseEnabled),
+    globalSkillDirs: dirs
+  })
+}
+
+interface ActiveTurn {
+  messageId: string
+  onEvent: (event: AgyStreamEvent) => void
+  gotResultOrError: boolean
+}
+
+interface PersistentAgySession {
+  conversationId: string
+  child: ChildProcessWithoutNullStreams
+  sessionKey: string
+  agyConversationId?: string
+  lastPreambleKey: string
+  activeTurn: ActiveTurn | null
+  lastUsedAt: number
+  idleTimer: ReturnType<typeof setTimeout> | null
+  closed: boolean
+  wasAborted: boolean
+  stderrText: string
+}
+
+export interface AgyAdapterOptions {
+  /** Keep agy.exe alive across turns in the same conversation (default: true). */
+  keepAlive?: boolean
+  /** Max idle time in ms before closing an unused agy.exe worker (default: 10 minutes). */
+  idleTtlMs?: number
+  /** Max concurrent persistent agy.exe workers kept alive (default: 3). */
+  maxSessions?: number
+  /** Optional spawn override for testing. */
+  spawnFn?: typeof spawn
+  /** Optional binary resolver override for testing. */
+  resolveBinaryFn?: (overridePath?: string) => Promise<string | null>
+}
+
+const DEFAULT_IDLE_TTL_MS = 10 * 60 * 1000
+const DEFAULT_MAX_SESSIONS = 3
+
 export class AgyCliAdapter {
-  private activeProcesses = new Map<string, ChildProcessWithoutNullStreams>()
+  private sessions = new Map<string, PersistentAgySession>()
+  private readonly keepAlive: boolean
+  private readonly idleTtlMs: number
+  private readonly maxSessions: number
+  private readonly spawnFn: typeof spawn
+  private readonly resolveBinaryFn: (overridePath?: string) => Promise<string | null>
+
+  constructor(options?: AgyAdapterOptions) {
+    this.keepAlive = options?.keepAlive ?? true
+    this.idleTtlMs = options?.idleTtlMs ?? DEFAULT_IDLE_TTL_MS
+    this.maxSessions = options?.maxSessions ?? DEFAULT_MAX_SESSIONS
+    this.spawnFn = options?.spawnFn ?? spawn
+    this.resolveBinaryFn = options?.resolveBinaryFn ?? getAgyBinaryPath
+  }
+
+  private clearIdleTimer(session: PersistentAgySession): void {
+    if (session.idleTimer) {
+      clearTimeout(session.idleTimer)
+      session.idleTimer = null
+    }
+  }
+
+  private scheduleIdleClose(session: PersistentAgySession): void {
+    this.clearIdleTimer(session)
+    if (!this.keepAlive) {
+      this.closeSessionGracefully(session)
+      return
+    }
+    session.idleTimer = setTimeout(() => {
+      if (!session.activeTurn && !session.closed) {
+        this.closeSessionGracefully(session)
+      }
+    }, this.idleTtlMs)
+    session.idleTimer.unref?.()
+  }
+
+  private closeSessionGracefully(session: PersistentAgySession): void {
+    this.clearIdleTimer(session)
+    if (this.sessions.get(session.conversationId) === session) {
+      this.sessions.delete(session.conversationId)
+    }
+    if (session.closed) return
+    session.closed = true
+    try {
+      if (session.child.stdin.writable) {
+        session.child.stdin.end()
+      }
+    } catch {
+      // ignore
+    }
+    setTimeout(() => {
+      if (session.child.exitCode === null && !session.child.killed) {
+        try {
+          session.child.kill('SIGTERM')
+        } catch {
+          try {
+            session.child.kill()
+          } catch {
+            // ignore
+          }
+        }
+      }
+    }, 1500).unref?.()
+  }
+
+  private evictIdleSessionIfNeeded(): void {
+    if (this.sessions.size < this.maxSessions) return
+    let oldestIdle: PersistentAgySession | null = null
+    for (const session of this.sessions.values()) {
+      if (session.activeTurn) continue
+      if (!oldestIdle || session.lastUsedAt < oldestIdle.lastUsedAt) {
+        oldestIdle = session
+      }
+    }
+    if (oldestIdle) {
+      this.closeSessionGracefully(oldestIdle)
+    }
+  }
+
+  private canReuseSession(
+    session: PersistentAgySession,
+    sessionKey: string,
+    payload: SendPromptPayload
+  ): boolean {
+    if (!this.keepAlive) return false
+    if (session.closed || session.activeTurn) return false
+    if (session.child.killed || session.child.exitCode !== null || !session.child.stdin.writable) {
+      return false
+    }
+    if (session.sessionKey !== sessionKey) return false
+    // Must match the core conversation ID; edit/resend clears agyConversationId to start a fresh thread.
+    if (!payload.agyConversationId || !session.agyConversationId) return false
+    if (payload.agyConversationId !== session.agyConversationId) return false
+    return true
+  }
 
   async sendPrompt(
     payload: SendPromptPayload,
     overrideBinaryPath: string | undefined,
     onEvent: (event: AgyStreamEvent) => void
   ): Promise<void> {
-    const binaryPath = await getAgyBinaryPath(overrideBinaryPath)
+    const binaryPath = await this.resolveBinaryFn(overrideBinaryPath)
     if (!binaryPath) {
       onEvent({
         type: 'error',
@@ -157,8 +324,37 @@ export class AgyCliAdapter {
       return
     }
 
-    // Abort any running process for the same conversation before starting a new turn
-    this.abort(payload.conversationId)
+    const sessionKey = buildSessionKey(binaryPath, payload)
+    const preambleKey = computeSessionPreambleKey(payload)
+    const existing = this.sessions.get(payload.conversationId)
+
+    // Fast path: reuse warm persistent agy.exe worker for this conversation (~0ms startup overhead).
+    if (existing && this.canReuseSession(existing, sessionKey, payload)) {
+      this.clearIdleTimer(existing)
+      const omitSessionPreamble = existing.lastPreambleKey === preambleKey
+      existing.lastPreambleKey = preambleKey
+      existing.lastUsedAt = Date.now()
+      existing.stderrText = ''
+      existing.activeTurn = {
+        messageId: payload.messageId,
+        onEvent,
+        gotResultOrError: false
+      }
+      const composedPrompt = buildComposedPrompt(payload, { omitSessionPreamble })
+      existing.child.stdin.write(buildAgyStdinMessage(composedPrompt), 'utf8')
+      return
+    }
+
+    // Close/abort any incompatible or busy worker for the same conversation before spawning a fresh one.
+    if (existing) {
+      if (existing.activeTurn) {
+        this.abort(payload.conversationId)
+      } else {
+        this.closeSessionGracefully(existing)
+      }
+    }
+
+    this.evictIdleSessionIfNeeded()
 
     const composedPrompt = buildComposedPrompt(payload)
     const args = buildAgyCliArgs(payload)
@@ -167,7 +363,7 @@ export class AgyCliAdapter {
     const currentPath = process.env.PATH ?? process.env.Path ?? ''
     const mergedPath = binDir ? `${binDir}${delimiter}${currentPath}` : currentPath
 
-    const child = spawn(binaryPath, args, {
+    const child = this.spawnFn(binaryPath, args, {
       cwd: payload.projectPath,
       windowsHide: true,
       env: {
@@ -178,22 +374,68 @@ export class AgyCliAdapter {
       }
     })
 
-    this.activeProcesses.set(payload.conversationId, child)
+    const session: PersistentAgySession = {
+      conversationId: payload.conversationId,
+      child,
+      sessionKey,
+      agyConversationId: payload.agyConversationId,
+      lastPreambleKey: preambleKey,
+      activeTurn: {
+        messageId: payload.messageId,
+        onEvent,
+        gotResultOrError: false
+      },
+      lastUsedAt: Date.now(),
+      idleTimer: null,
+      closed: false,
+      wasAborted: false,
+      stderrText: ''
+    }
+
+    this.sessions.set(payload.conversationId, session)
     // Ignore EPIPE if the CLI exits before reading stdin; the close handler reports the failure.
     child.stdin.on('error', () => {})
-    child.stdin.end(buildAgyStdinMessage(composedPrompt), 'utf8')
+
+    const lineMsg = buildAgyStdinMessage(composedPrompt)
+    if (this.keepAlive) {
+      child.stdin.write(lineMsg, 'utf8')
+    } else {
+      child.stdin.end(lineMsg, 'utf8')
+    }
+
     const buffer = new NdjsonLineBuffer()
-    let stderrText = ''
-    let gotResultOrError = false
-    let wasAborted = false
 
     const handleLine = (line: string): void => {
-      const event = parseAgyNdjsonLine(line, payload.conversationId, payload.messageId)
+      const turn = session.activeTurn
+      if (!turn) return
+      const event = parseAgyNdjsonLine(line, payload.conversationId, turn.messageId)
       if (!event) return
-      if (event.type === 'result' || event.type === 'error') {
-        gotResultOrError = true
+
+      if (event.type === 'init' && event.agyConversationId) {
+        session.agyConversationId = event.agyConversationId
       }
-      onEvent(event)
+
+      if (event.type === 'result') {
+        if (event.agyConversationId) {
+          session.agyConversationId = event.agyConversationId
+        }
+        turn.gotResultOrError = true
+        session.activeTurn = null
+        session.lastUsedAt = Date.now()
+        this.scheduleIdleClose(session)
+        turn.onEvent(event)
+        return
+      }
+
+      if (event.type === 'error') {
+        turn.gotResultOrError = true
+        session.activeTurn = null
+        turn.onEvent(event)
+        this.closeSessionGracefully(session)
+        return
+      }
+
+      turn.onEvent(event)
     }
 
     child.stdout.setEncoding('utf8')
@@ -205,17 +447,23 @@ export class AgyCliAdapter {
 
     child.stderr.setEncoding('utf8')
     child.stderr.on('data', (chunk: string) => {
-      stderrText += chunk
+      session.stderrText += chunk
     })
 
     child.on('error', (err) => {
-      this.activeProcesses.delete(payload.conversationId)
-      if (!gotResultOrError && !wasAborted) {
-        gotResultOrError = true
-        onEvent({
+      this.clearIdleTimer(session)
+      session.closed = true
+      if (this.sessions.get(payload.conversationId) === session) {
+        this.sessions.delete(payload.conversationId)
+      }
+      const turn = session.activeTurn
+      session.activeTurn = null
+      if (turn && !turn.gotResultOrError && !session.wasAborted) {
+        turn.gotResultOrError = true
+        turn.onEvent({
           type: 'error',
           conversationId: payload.conversationId,
-          messageId: payload.messageId,
+          messageId: turn.messageId,
           error: `Không thể khởi chạy lõi AI: ${err.message}`
         })
       }
@@ -226,50 +474,58 @@ export class AgyCliAdapter {
         handleLine(line)
       }
 
-      const stillActive = this.activeProcesses.get(payload.conversationId) === child
-      if (stillActive) {
-        this.activeProcesses.delete(payload.conversationId)
+      this.clearIdleTimer(session)
+      session.closed = true
+      if (this.sessions.get(payload.conversationId) === session) {
+        this.sessions.delete(payload.conversationId)
       }
 
-      if (signal === 'SIGTERM' || signal === 'SIGKILL' || wasAborted) {
+      const turn = session.activeTurn
+      session.activeTurn = null
+
+      if (!turn || signal === 'SIGTERM' || signal === 'SIGKILL' || session.wasAborted) {
         return
       }
 
-      if (!gotResultOrError) {
+      if (!turn.gotResultOrError) {
         if (code === 0) {
-          onEvent({
+          turn.onEvent({
             type: 'result',
             conversationId: payload.conversationId,
-            messageId: payload.messageId,
+            messageId: turn.messageId,
             status: 'SUCCESS'
           })
         } else {
-          const cleanErr = stderrText.trim() || `Tiến trình lõi AI thoát với mã lỗi ${code}.`
-          onEvent({
+          const cleanErr =
+            session.stderrText.trim() || `Tiến trình lõi AI thoát với mã lỗi ${code}.`
+          turn.onEvent({
             type: 'error',
             conversationId: payload.conversationId,
-            messageId: payload.messageId,
+            messageId: turn.messageId,
             error: cleanErr
           })
         }
       }
     })
 
-    // Mark abort flag if killed via abort()
     child.once('exit', (_code, signal) => {
-      if (signal) wasAborted = true
+      if (signal) session.wasAborted = true
     })
   }
 
   abort(conversationId: string): boolean {
-    const proc = this.activeProcesses.get(conversationId)
-    if (!proc) return false
-    this.activeProcesses.delete(conversationId)
+    const session = this.sessions.get(conversationId)
+    if (!session) return false
+    this.clearIdleTimer(session)
+    session.wasAborted = true
+    session.closed = true
+    session.activeTurn = null
+    this.sessions.delete(conversationId)
     try {
-      proc.kill('SIGTERM')
+      session.child.kill('SIGTERM')
     } catch {
       try {
-        proc.kill()
+        session.child.kill()
       } catch {
         // ignore
       }
@@ -278,7 +534,7 @@ export class AgyCliAdapter {
   }
 
   abortAll(): void {
-    for (const conversationId of Array.from(this.activeProcesses.keys())) {
+    for (const conversationId of Array.from(this.sessions.keys())) {
       this.abort(conversationId)
     }
   }

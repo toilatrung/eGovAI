@@ -57,6 +57,10 @@ namespace EGovAIUninstall
                         MessageBoxButtons.RetryCancel, MessageBoxIcon.Warning) != DialogResult.Retry)
                     return 1;
             }
+            foreach (var p in Process.GetProcessesByName("agy").Where(x => InDir(x, dir)))
+            {
+                try { p.Kill(); p.WaitForExit(3000); } catch { }
+            }
 
             bool removeData = false;
             string userData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GoogleAI");

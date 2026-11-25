@@ -10,6 +10,7 @@ import { getAgyBinaryPath } from '../agent/agyBinary'
 import { execAgentDesktopArgs } from './computerUseService'
 import type { InteractionManager } from './interactionManager'
 import { PlaywrightWebService } from './playwrightService'
+import type { WebAutomationBackend } from './inAppBrowserService'
 import { ScreenCaptureService } from './screenCaptureService'
 import {
   SESSION_ALLOW_SCOPE_TEXT,
@@ -210,7 +211,7 @@ export const DESKTOP_MCP_TOOLS: McpToolDef[] = [
   {
     name: 'web_open',
     description:
-      'Mở một trang web bằng Playwright trên cửa sổ Chrome/Edge thật đang hiển thị cho người dùng và trả về ngay tiêu đề, nội dung trích lược cùng danh sách mã phần tử (@w1, @w2...) để bấm/điền trực tiếp. LUÔN ưu tiên cho mọi tác vụ tra cứu web, tìm kiếm Google, Cổng VBPL, điền biểu mẫu trực tuyến.',
+      'Mở một trang web ngay trong Trình duyệt tích hợp bên trong eGovAI (không cần mở Chrome/Edge ngoài) và trả về ngay tiêu đề, nội dung trích lược cùng danh sách mã phần tử (@w1, @w2...) để bấm/điền trực tiếp. LUÔN ưu tiên cho mọi tác vụ tra cứu web, tìm kiếm Google, Cổng VBPL, điền biểu mẫu trực tuyến.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -680,7 +681,7 @@ async function executeDesktopTool(
   toolName: string,
   args: Record<string, unknown>,
   interactions?: InteractionManager,
-  webService?: PlaywrightWebService,
+  webService?: WebAutomationBackend,
   screenCapture?: ScreenCaptureService
 ): Promise<ToolExecutionResult> {
   try {
@@ -1327,14 +1328,21 @@ export class DesktopMcpServer {
   private server: http.Server | null = null
   private port: number | null = null
   private token: string = randomBytes(32).toString('hex')
+  private lastVerifiedUrl: string | null = null
+  private lastVerifiedToken: string | null = null
   private isEnabled: () => boolean
   private interactions?: InteractionManager
-  private webService = new PlaywrightWebService()
+  private webService: WebAutomationBackend
   private screenCapture = new ScreenCaptureService()
 
-  constructor(isEnabled: () => boolean, interactions?: InteractionManager) {
+  constructor(
+    isEnabled: () => boolean,
+    interactions?: InteractionManager,
+    webService?: WebAutomationBackend
+  ) {
     this.isEnabled = isEnabled
     this.interactions = interactions
+    this.webService = webService ?? new PlaywrightWebService()
   }
 
   getEndpointUrl(): string | null {
@@ -1522,6 +1530,30 @@ export class DesktopMcpServer {
   }
 
   /**
+   * Kiểm tra nhanh tệp mcp_config.json ngay trong tiến trình Node (<1ms, không spawn agy.exe).
+   */
+  private matchesLocalMcpConfig(expectedUrl: string, expectedToken: string): boolean {
+    const rawCfg = defaultReadAgyMcpConfig()
+    if (!rawCfg) return false
+    try {
+      const parsed = JSON.parse(rawCfg) as {
+        mcpServers?: Record<
+          string,
+          { serverUrl?: string; url?: string; headers?: Record<string, string>; disabled?: boolean }
+        >
+      }
+      const entry = parsed.mcpServers?.[DESKTOP_MCP_SERVER_NAME]
+      if (!entry || entry.disabled) return false
+      const cfgUrl = (entry.serverUrl || entry.url || '').trim()
+      if (cfgUrl !== expectedUrl.trim()) return false
+      const authHeader = entry.headers?.Authorization || entry.headers?.authorization || ''
+      return authHeader === `Bearer ${expectedToken}`
+    } catch {
+      return false
+    }
+  }
+
+  /**
    * Đảm bảo máy chủ HTTP đang sống và đăng ký `egovai-desktop` trong `agy` khớp đúng cổng + mã xác thực.
    * Tự động khởi động lại máy chủ hoặc gỡ và đăng ký lại nếu bị lệch sau khi khởi động lại ứng dụng.
    */
@@ -1529,6 +1561,8 @@ export class DesktopMcpServer {
     overrideAgyPath?: string
   ): Promise<{ ok: boolean; reregistered: boolean; reason?: string }> {
     if (!this.isListening()) {
+      this.lastVerifiedUrl = null
+      this.lastVerifiedToken = null
       try {
         await this.start()
       } catch (err) {
@@ -1542,14 +1576,34 @@ export class DesktopMcpServer {
 
     const url = this.getEndpointUrl()
     if (!url) return { ok: false, reregistered: false, reason: 'Chưa có địa chỉ cổng MCP' }
+
+    // Lối tắt nhanh (<1ms): đã xác minh thành công trong phiên này và tệp mcp_config.json vẫn khớp nguyên vẹn.
+    if (
+      this.lastVerifiedUrl === url &&
+      this.lastVerifiedToken === this.token &&
+      this.matchesLocalMcpConfig(url, this.token)
+    ) {
+      return { ok: true, reregistered: false }
+    }
+
     const agyBinary = await getAgyBinaryPath(overrideAgyPath)
     if (!agyBinary) return { ok: false, reregistered: false, reason: 'Không tìm thấy tệp agy.exe' }
 
-    return await syncAgyMcpRegistration(url, this.token, this.createAgyRunner(agyBinary))
+    const result = await syncAgyMcpRegistration(url, this.token, this.createAgyRunner(agyBinary))
+    if (result.ok) {
+      this.lastVerifiedUrl = url
+      this.lastVerifiedToken = this.token
+    } else {
+      this.lastVerifiedUrl = null
+      this.lastVerifiedToken = null
+    }
+    return result
   }
 
   stop(): void {
     void this.webService.close()
+    this.lastVerifiedUrl = null
+    this.lastVerifiedToken = null
     if (this.server) {
       this.server.closeAllConnections?.()
       this.server.close()

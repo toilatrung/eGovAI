@@ -22,9 +22,25 @@ import {
 } from '../../../shared/types'
 import i18n from '../i18n'
 import { buildReplayPrompt } from '../utils/conversationTools'
+import {
+  LIVE_DRAFT_TAB_ID,
+  deriveLiveDraftTitle,
+  extractWrittenFileFromToolCall,
+  looksLikeDocumentDraft
+} from '../utils/liveDraft'
 
 export type ActiveView = 'chat' | 'skills' | 'customizations' | 'settings'
-export type AuxTab = 'doc' | 'files' | 'terminal' | 'tasks'
+export type AuxTab = 'doc' | 'browser' | 'files' | 'terminal' | 'tasks'
+
+export interface LiveDraftState {
+  conversationId: string
+  messageId: string
+  title: string
+  content: string
+  filePath?: string
+  streaming: boolean
+  updatedAt: number
+}
 
 interface ComposerDraftRequest {
   attachment?: AttachedItem
@@ -51,10 +67,13 @@ interface AppState {
   activeView: ActiveView
   sidebarOpen: boolean
 
-  // Auxiliary Pane (Phase 4: Docs, Excel, Files/Diff, Terminal, Tasks)
+  // Auxiliary Pane (Phase 4: Docs, Browser, Files/Diff, Terminal, Tasks)
   auxOpen: boolean
   auxTab: AuxTab
   auxWidth: number
+  browserUrl: string
+  liveDraft: LiveDraftState | null
+  dismissedDraftMessageId: string | null
   openedDocs: OpenedDocument[]
   activeDocPath: string | null
   docLoadingError: string | null
@@ -79,6 +98,9 @@ interface AppState {
   setAuxOpen: (open: boolean) => void
   setAuxTab: (tab: AuxTab) => void
   setAuxWidth: (width: number) => void
+  setBrowserUrl: (url: string) => void
+  openInAppBrowser: (url?: string) => void
+  dismissLiveDraft: () => void
   pickAndAddProject: () => Promise<void>
   selectProject: (projectId: string) => Promise<void>
   removeProject: (projectId: string) => Promise<void>
@@ -203,7 +225,7 @@ async function startTurn(set: StoreSet, get: StoreGet, p: StartTurnParams): Prom
   await window.googleAI.saveConversation(updatedConversation)
 
   const effectiveTurnModelId =
-    state.settings.computerUseEnabled && state.settings.fastModelForComputerUse
+    state.settings.fastModelForComputerUse
       ? (pickFastComputerUseModel(state.agyStatus?.models ?? [])?.id ?? p.modelId)
       : p.modelId
 
@@ -217,7 +239,7 @@ async function startTurn(set: StoreSet, get: StoreGet, p: StartTurnParams): Prom
     effort: p.effort,
     mode: p.mode,
     useSandbox: state.settings.useSandbox,
-    computerUseEnabled: state.settings.computerUseEnabled,
+    computerUseEnabled: true,
     preferVietnameseReplies: state.settings.preferVietnameseReplies,
     agencyProfile: state.settings.agencyProfile,
     globalSkillDirs: (state.settings.globalSkillSources ?? []).map((src) => src.path),
@@ -292,6 +314,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   auxOpen: true,
   auxTab: 'doc',
   auxWidth: 500,
+  browserUrl: '',
+  liveDraft: null,
+  dismissedDraftMessageId: null,
   openedDocs: [],
   activeDocPath: null,
   docLoadingError: null,
@@ -425,6 +450,25 @@ export const useAppStore = create<AppState>((set, get) => ({
   setAuxTab: (tab) => set({ auxTab: tab, auxOpen: true }),
 
   setAuxWidth: (width) => set({ auxWidth: Math.max(360, Math.min(900, width)) }),
+
+  setBrowserUrl: (url) => set({ browserUrl: url }),
+
+  openInAppBrowser: (url) =>
+    set((s) => ({
+      auxOpen: true,
+      auxTab: 'browser',
+      browserUrl: url !== undefined && url.trim() ? url.trim() : s.browserUrl
+    })),
+
+  dismissLiveDraft: () =>
+    set((s) => ({
+      liveDraft: null,
+      dismissedDraftMessageId: s.liveDraft?.messageId ?? s.dismissedDraftMessageId,
+      activeDocPath:
+        s.activeDocPath === LIVE_DRAFT_TAB_ID
+          ? (s.openedDocs[0]?.path ?? null)
+          : s.activeDocPath
+    })),
 
   pickAndAddProject: async () => {
     const added = await window.googleAI.pickProject()
@@ -783,6 +827,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   handleStreamEvent: (event) => {
+    let autoOpenWrittenPath: string | null = null
+
     set((s) => {
       const convIndex = s.conversations.findIndex((c) => c.id === event.conversationId)
       if (convIndex === -1) return s
@@ -790,6 +836,17 @@ export const useAppStore = create<AppState>((set, get) => ({
       const conv = s.conversations[convIndex]
       let updatedConv: Conversation = conv
       let finished = false
+      let nextLiveDraft = s.liveDraft
+      let nextAuxOpen = s.auxOpen
+      let nextAuxTab = s.auxTab
+      let nextActiveDocPath = s.activeDocPath
+      const isActiveConv = s.activeConversationId === event.conversationId
+      const isDismissed = s.dismissedDraftMessageId === event.messageId
+
+      // Find preceding user message's activeSkill title for better live draft title
+      const targetIdx = conv.messages.findIndex((m) => m.id === event.messageId)
+      const prevUserMsg = targetIdx > 0 ? conv.messages[targetIdx - 1] : undefined
+      const skillTitle = prevUserMsg?.activeSkill?.title
 
       if (event.type === 'init') {
         updatedConv = {
@@ -801,11 +858,34 @@ export const useAppStore = create<AppState>((set, get) => ({
           if (msg.id !== event.messageId) return msg
 
           switch (event.type) {
-            case 'text_delta':
+            case 'text_delta': {
+              const nextContent = msg.content + event.delta
+              if (isActiveConv && !isDismissed) {
+                const alreadyDraftingThis =
+                  s.liveDraft &&
+                  s.liveDraft.messageId === event.messageId &&
+                  !s.liveDraft.filePath
+                if (alreadyDraftingThis || looksLikeDocumentDraft(nextContent, Boolean(skillTitle))) {
+                  nextLiveDraft = {
+                    conversationId: event.conversationId,
+                    messageId: event.messageId,
+                    title: deriveLiveDraftTitle(nextContent, skillTitle),
+                    content: nextContent,
+                    streaming: true,
+                    updatedAt: Date.now()
+                  }
+                  if (!alreadyDraftingThis) {
+                    nextAuxOpen = true
+                    nextAuxTab = 'doc'
+                    nextActiveDocPath = LIVE_DRAFT_TAB_ID
+                  }
+                }
+              }
               return {
                 ...msg,
-                content: msg.content + event.delta
+                content: nextContent
               }
+            }
 
             case 'thinking_done':
               return {
@@ -821,6 +901,30 @@ export const useAppStore = create<AppState>((set, get) => ({
                 idx >= 0
                   ? existing.map((t, i) => (i === idx ? { ...t, ...event.toolCall } : t))
                   : [...existing, event.toolCall]
+
+              if (isActiveConv) {
+                const written = extractWrittenFileFromToolCall(event.toolCall)
+                if (written) {
+                  if (event.toolCall.state === 'DONE') {
+                    autoOpenWrittenPath = written.filePath
+                  } else if (written.content && !isDismissed) {
+                    const baseName = written.filePath.replace(/\\/g, '/').split('/').pop() || 'Đang ghi tệp…'
+                    nextLiveDraft = {
+                      conversationId: event.conversationId,
+                      messageId: event.messageId,
+                      title: baseName,
+                      content: written.content,
+                      filePath: written.filePath,
+                      streaming: true,
+                      updatedAt: Date.now()
+                    }
+                    nextAuxOpen = true
+                    nextAuxTab = 'doc'
+                    nextActiveDocPath = LIVE_DRAFT_TAB_ID
+                  }
+                }
+              }
+
               return {
                 ...msg,
                 toolCalls: nextTools
@@ -831,6 +935,17 @@ export const useAppStore = create<AppState>((set, get) => ({
               finished = true
               const finalContent =
                 msg.content.trim().length > 0 ? msg.content : (event.response ?? msg.content)
+              if (nextLiveDraft && nextLiveDraft.messageId === event.messageId) {
+                nextLiveDraft = {
+                  ...nextLiveDraft,
+                  title: nextLiveDraft.filePath
+                    ? nextLiveDraft.title
+                    : deriveLiveDraftTitle(finalContent, skillTitle),
+                  content: nextLiveDraft.filePath ? nextLiveDraft.content : finalContent,
+                  streaming: false,
+                  updatedAt: Date.now()
+                }
+              }
               return {
                 ...msg,
                 content: finalContent,
@@ -841,6 +956,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
             case 'error':
               finished = true
+              if (nextLiveDraft && nextLiveDraft.messageId === event.messageId) {
+                nextLiveDraft = { ...nextLiveDraft, streaming: false, updatedAt: Date.now() }
+              }
               return {
                 ...msg,
                 status: 'error' as const,
@@ -849,6 +967,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
             case 'aborted':
               finished = true
+              if (nextLiveDraft && nextLiveDraft.messageId === event.messageId) {
+                nextLiveDraft = { ...nextLiveDraft, streaming: false, updatedAt: Date.now() }
+              }
               return {
                 ...msg,
                 status: 'aborted' as const
@@ -880,8 +1001,16 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       return {
         conversations: nextConvs,
-        streamingConversationIds: nextStreaming
+        streamingConversationIds: nextStreaming,
+        liveDraft: nextLiveDraft,
+        auxOpen: nextAuxOpen,
+        auxTab: nextAuxTab,
+        activeDocPath: nextActiveDocPath
       }
     })
+
+    if (autoOpenWrittenPath) {
+      void get().openFileInStudio(autoOpenWrittenPath)
+    }
   }
 }))

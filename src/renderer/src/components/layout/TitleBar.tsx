@@ -94,7 +94,7 @@ export function TitleBar(): React.JSX.Element {
 
         <button
           onClick={toggleAuxPane}
-          title="Ẩn hoặc hiện bảng Tài liệu & Excel"
+          title="Ẩn hoặc hiện bảng Tài liệu & Trình duyệt"
           aria-pressed={auxOpen}
           className={`press flex h-[30px] items-center gap-1.5 rounded-lg px-2 text-[12px] font-medium ${
             auxOpen ? 'bg-brand-soft text-brand' : 'text-muted hover:bg-sunken hover:text-ink'
