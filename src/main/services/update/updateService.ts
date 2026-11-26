@@ -13,8 +13,8 @@ import { execFile, spawn } from 'child_process'
 import { createHash, randomUUID } from 'crypto'
 import { createWriteStream, existsSync, mkdirSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'fs'
 import { dirname, join } from 'path'
-import type { AppSettings, UpdateErrorCode, UpdateState } from '../../shared/types'
-import type { AuditLogService } from './auditLogService'
+import type { AppSettings, UpdateErrorCode, UpdateState } from '../../../shared/types'
+import type { AuditLogService } from '../security/auditLogService'
 import {
   AUTO_CHECK_DELAY_MS,
   AUTO_CHECK_INTERVAL_MS,

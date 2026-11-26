@@ -10,7 +10,7 @@ import {
   type ProjectWorkspace,
   type ScheduledTask,
   type StorageSecurityStatus
-} from '../../shared/types'
+} from '../../../shared/types'
 import { discoverWorkspaceSkills } from './skillDiscovery'
 
 const DEFAULT_RECOMMENDED_WORKSPACES = [

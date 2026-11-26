@@ -11,8 +11,8 @@ import {
   isDestructiveLabel,
   markUntrustedWebContent,
   maskSensitiveText
-} from '../src/main/services/desktopActionPolicy'
-import { InteractionManager } from '../src/main/services/interactionManager'
+} from '../src/main/services/desktop/desktopActionPolicy'
+import { InteractionManager } from '../src/main/services/desktop/interactionManager'
 import type { InteractionRequest } from '../src/shared/types'
 import { DEFAULT_SETTINGS } from '../src/shared/types'
 

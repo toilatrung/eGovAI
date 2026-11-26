@@ -8,8 +8,8 @@ import {
   stripPlanBlock,
   type DocPlan
 } from '../src/shared/docPlan'
-import { buildDraftDocxPath, draftFileBaseName } from '../src/main/services/draftFiles'
-import { toStandardChromeUserAgent } from '../src/main/services/inAppBrowserService'
+import { buildDraftDocxPath, draftFileBaseName } from '../src/main/services/document/draftFiles'
+import { toStandardChromeUserAgent } from '../src/main/services/browser/inAppBrowserService'
 
 const REPLY = [
   'Tôi đề xuất 3 văn bản theo thứ tự:',

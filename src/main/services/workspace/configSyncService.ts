@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs'
 import { homedir } from 'os'
 import { dirname, join } from 'path'
-import type { AntigravityCustomizations, RuleFileEntry } from '../../shared/types'
+import type { AntigravityCustomizations, RuleFileEntry } from '../../../shared/types'
 
 function safeRead(path: string, fallback = ''): { exists: boolean; content: string } {
   if (!existsSync(path)) return { exists: false, content: fallback }

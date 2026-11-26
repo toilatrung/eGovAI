@@ -11,7 +11,7 @@ import type {
   OAuthFlowEvent,
   QuotaBucket,
   QuotaGroup
-} from '../../shared/types'
+} from '../../../shared/types'
 
 const execFileAsync = promisify(execFile)
 

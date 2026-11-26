@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { checkOpenPathAllowed } from '../src/main/services/openPathGuard'
-import { buildAgyStdinMessage } from '../src/main/agent/agyAdapter'
+import { checkOpenPathAllowed } from '../src/main/services/security/openPathGuard'
+import { buildAgyStdinMessage } from '../src/main/services/agent/agyAdapter'
 
 describe('checkOpenPathAllowed', () => {
   it('allows office documents and images (case-insensitive)', () => {

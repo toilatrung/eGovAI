@@ -2,26 +2,26 @@ import { describe, expect, it } from 'vitest'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { NdjsonLineBuffer, parseAgyNdjsonLine } from '../src/main/agent/ndjsonParser'
+import { NdjsonLineBuffer, parseAgyNdjsonLine } from '../src/main/services/agent/ndjsonParser'
 import {
   extractOAuthUrl,
   parseAgyModelsOutput,
   parseAgyQuotaJson
-} from '../src/main/agent/agyBinary'
-import { buildAgyCliArgs, buildComposedPrompt } from '../src/main/agent/agyAdapter'
+} from '../src/main/services/agent/agyBinary'
+import { buildAgyCliArgs, buildComposedPrompt } from '../src/main/services/agent/agyAdapter'
 import {
   categorizeUbndSkill,
   discoverAllSkills,
   parseIndexRouter,
   parseSkillFrontmatter
-} from '../src/main/services/skillDiscovery'
+} from '../src/main/services/workspace/skillDiscovery'
 import {
   detectDocKind,
   exportMarkdownToDocx,
   normalizeSheetRows,
   openDocumentFile,
   saveExcelDocumentFile
-} from '../src/main/services/documentService'
+} from '../src/main/services/document/documentService'
 import {
   extractLocalFilesFromMarkdown,
   resolveLocalFileHref,
@@ -31,7 +31,7 @@ import { computeTokenStats, formatCompactTokens } from '../src/renderer/src/util
 import {
   parseAgentDesktopStatus,
   parseAgentDesktopWindows
-} from '../src/main/services/computerUseService'
+} from '../src/main/services/desktop/computerUseService'
 import {
   formatAgencyProfileSummary,
   mergeAgencyBlockIntoMarkdown
@@ -40,12 +40,12 @@ import { DEFAULT_AGENCY_PROFILE } from '../src/shared/types'
 import {
   DesktopMcpServer,
   normalizeAgentDesktopKey
-} from '../src/main/services/desktopMcpServer'
-import { InteractionManager } from '../src/main/services/interactionManager'
+} from '../src/main/services/desktop/desktopMcpServer'
+import { InteractionManager } from '../src/main/services/desktop/interactionManager'
 import {
   detectSystemBrowser,
   normalizeWebSelector
-} from '../src/main/services/playwrightService'
+} from '../src/main/services/browser/playwrightService'
 
 describe('ndjsonParser', () => {
   it('parses real agy init, text_delta, tool, and result events', () => {

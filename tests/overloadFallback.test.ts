@@ -5,15 +5,15 @@ import { tmpdir } from 'os'
 import { dirname, join } from 'path'
 import type { ChildProcessWithoutNullStreams } from 'child_process'
 import { afterEach, describe, expect, it } from 'vitest'
-import { AgyCliAdapter } from '../src/main/agent/agyAdapter'
-import { parseAgyNdjsonLine } from '../src/main/agent/ndjsonParser'
+import { AgyCliAdapter } from '../src/main/services/agent/agyAdapter'
+import { parseAgyNdjsonLine } from '../src/main/services/agent/ndjsonParser'
 import {
   agyTranscriptPath,
   isOverloadError,
   pickStrongFallbackModel,
   pickSummaryModel,
   readNewOverloadErrors
-} from '../src/main/agent/overloadFallback'
+} from '../src/main/services/agent/overloadFallback'
 import type { AgyStreamEvent, SendPromptPayload } from '../src/shared/types'
 
 const MODELS = [

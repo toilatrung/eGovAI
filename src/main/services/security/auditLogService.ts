@@ -14,8 +14,8 @@ import type {
   InteractionRequest,
   InteractionResponse,
   SendPromptPayload
-} from '../../shared/types'
-import type { StringCrypto } from './storageService'
+} from '../../../shared/types'
+import type { StringCrypto } from '../workspace/storageService'
 
 export const AUDIT_FILE_NAME = 'googleai-audit.jsonl'
 export const PROMPT_PREVIEW_CHARS = 200

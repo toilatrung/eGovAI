@@ -79,14 +79,14 @@ Lỗi mới, ngoài những gì đã biết ở mục 1 (đánh số để theo 
 ## 2. Nguyên nhân từng vấn đề
 
 ### 2.1 "Đã soạn trong Tài liệu mà câu trả lời vẫn soạn luôn"
-- Lời dặn mô hình ([agyAdapter.ts:36](../src/main/agent/agyAdapter.ts)) yêu cầu "trình bày toàn văn … ngay trong phản hồi".
+- Lời dặn mô hình ([agyAdapter.ts:36](../src/main/services/agent/agyAdapter.ts)) yêu cầu "trình bày toàn văn … ngay trong phản hồi".
 - Bản nháp trực tiếp ([useAppStore.ts:861](../src/renderer/src/stores/useAppStore.ts)) chỉ sao chép nguyên `msg.content` sang tab Tài liệu. Chat vẫn hiển thị toàn bộ nội dung.
 - Không có ranh giới giữa phần "văn bản" và phần "trao đổi", nên lời dẫn và ghi chú cũng lọt vào tài liệu và vào tệp Word xuất ra.
 
 ### 2.2 Ký tự lạ `<br>`, `&nbsp;`
 - Mô hình dùng HTML để xuống dòng trong ô bảng, như khối Quốc hiệu và Nơi nhận/Chữ ký.
 - `ReactMarkdown` không bật HTML nên hiện nguyên `<br>`.
-- Bộ xuất Word ([documentService.ts:355](../src/main/services/documentService.ts)) tự tách dòng rất thô sơ:
+- Bộ xuất Word ([documentService.ts:355](../src/main/services/document/documentService.ts)) tự tách dòng rất thô sơ:
   - không hiểu `<br>`, `&nbsp;`, chữ đậm hay nghiêng trong ô bảng (giữ nguyên `**`);
   - không hiểu danh sách đánh số, tiêu đề từ `####` trở xuống, hay `---`;
   - khối Quốc hiệu bị kẻ viền như bảng dữ liệu, sai thể thức NĐ 30.
@@ -98,7 +98,7 @@ Lỗi mới, ngoài những gì đã biết ở mục 1 (đánh số để theo 
 
 ### 2.4 Trình duyệt không hiện quá trình tra cứu
 - Các công cụ `web_*` của eGovAI có điều khiển `<webview>` thật, nhưng mô hình hầu như dùng `search_web` / `read_url_content` nội bộ của lõi (chạy ngầm).
-- Khi `<webview>` chưa sẵn sàng, ứng dụng chuyển sang Playwright chạy ẩn ([inAppBrowserService.ts:107](../src/main/services/inAppBrowserService.ts)).
+- Khi `<webview>` chưa sẵn sàng, ứng dụng chuyển sang Playwright chạy ẩn ([inAppBrowserService.ts:107](../src/main/services/browser/inAppBrowserService.ts)).
 - Không có con trỏ hay vùng tô sáng cho biết AI đang bấm hoặc gõ vào đâu.
 
 ### 2.5 antigravity-cli

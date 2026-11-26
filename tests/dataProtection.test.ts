@@ -19,21 +19,21 @@ import {
   readZipEntries,
   scanAttachmentsForClassification,
   formatClassificationBlockMessage
-} from '../src/main/services/classificationGuard'
+} from '../src/main/services/security/classificationGuard'
 import {
   ENCRYPTED_MAGIC,
   StorageService,
   pruneConversations,
   type StringCrypto
-} from '../src/main/services/storageService'
+} from '../src/main/services/workspace/storageService'
 import {
   AgentAuditTracker,
   AuditLogService,
   buildAuditEntry,
   parseAuditLine,
   serializeAuditLine
-} from '../src/main/services/auditLogService'
-import { AI_DRAFT_MARK, exportMarkdownToDocx } from '../src/main/services/documentService'
+} from '../src/main/services/security/auditLogService'
+import { AI_DRAFT_MARK, exportMarkdownToDocx } from '../src/main/services/document/documentService'
 import type { Conversation } from '../src/shared/types'
 
 /** Fake safeStorage: XOR + base64 so ciphertext never contains the plain JSON. */

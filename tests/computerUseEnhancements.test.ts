@@ -3,12 +3,12 @@ import {
   mapImageBoxToCaptureRect,
   mapImagePointToScreen,
   type CaptureFrame
-} from '../src/main/services/screenCaptureService'
+} from '../src/main/services/desktop/screenCaptureService'
 import {
   parseAgyMcpList,
   syncAgyMcpRegistration,
   verifyAgyMcpRegistration
-} from '../src/main/services/desktopMcpServer'
+} from '../src/main/services/desktop/desktopMcpServer'
 import { pickFastComputerUseModel } from '../src/shared/types'
 
 describe('screenCaptureService (quy đổi tọa độ ảnh → màn hình theo tỉ lệ và DPI)', () => {

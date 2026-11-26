@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto'
-import type { InteractionRequest, InteractionResponse } from '../../shared/types'
+import type { InteractionRequest, InteractionResponse } from '../../../shared/types'
 import {
   SCOPE_DEFAULT_TTL_MS,
   isScopeActive,

@@ -3,8 +3,8 @@ import { mkdtempSync, readFileSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import mammoth from 'mammoth'
-import { readZipEntries } from '../src/main/services/classificationGuard'
-import { AI_DRAFT_MARK, exportMarkdownToDocx } from '../src/main/services/documentService'
+import { readZipEntries } from '../src/main/services/security/classificationGuard'
+import { AI_DRAFT_MARK, exportMarkdownToDocx } from '../src/main/services/document/documentService'
 
 const CONG_VAN = `| ỦY BAN NHÂN DÂN<br>**PHƯỜNG [TÊN PHƯỜNG]** | **CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM**<br>**Độc lập - Tự do - Hạnh phúc** |
 | :---: | :---: |

@@ -8,7 +8,7 @@ import {
 } from 'fs'
 import { homedir } from 'os'
 import { basename, join, relative } from 'path'
-import type { GlobalSkillSource, SkillItem, SkillScope } from '../../shared/types'
+import type { GlobalSkillSource, SkillItem, SkillScope } from '../../../shared/types'
 
 interface Frontmatter {
   name?: string

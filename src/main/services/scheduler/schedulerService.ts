@@ -1,7 +1,7 @@
 import { Notification } from 'electron'
-import type { ScheduledTask } from '../../shared/types'
+import type { ScheduledTask } from '../../../shared/types'
 import { AgyCliAdapter } from '../agent/agyAdapter'
-import type { StorageService } from './storageService'
+import type { StorageService } from '../workspace/storageService'
 
 export class SchedulerService {
   private timer: NodeJS.Timeout | null = null

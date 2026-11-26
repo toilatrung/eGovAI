@@ -40,7 +40,7 @@ import {
   normalizeDraftMarkdown,
   splitPlaceholders,
   stripCellMarkdown
-} from '../../shared/draftMarkdown'
+} from '../../../shared/draftMarkdown'
 
 /** Document-properties label for AI-assisted drafts exported by the app. */
 export const AI_DRAFT_MARK = 'Dự thảo – có sự hỗ trợ của AI (eGovAI)'

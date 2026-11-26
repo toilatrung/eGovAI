@@ -11,7 +11,7 @@ import {
   quoteWindowsArg,
   resolveRelease,
   type GitHubRelease
-} from '../src/main/services/updateLogic'
+} from '../src/main/services/update/updateLogic'
 
 describe('compareVersions', () => {
   it('orders major/minor/patch numerically', () => {

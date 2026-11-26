@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'fs'
 import { isAbsolute, join, relative } from 'path'
-import type { WorkspaceEntry } from '../../shared/types'
+import type { WorkspaceEntry } from '../../../shared/types'
 
 const IGNORED_DIRS = new Set([
   '.git',

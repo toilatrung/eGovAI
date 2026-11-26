@@ -19,56 +19,56 @@ import type {
   ScheduledTask,
   SendPromptPayload
 } from '../shared/types'
-import { AgyCliAdapter } from './agent/agyAdapter'
+import { AgyCliAdapter } from './services/agent/agyAdapter'
 import {
   checkAgyStatus,
   fetchAgyQuota,
   getAgyBinaryPath,
   GoogleOAuthManager,
   launchOfficialAgyInstaller
-} from './agent/agyBinary'
-import { configureAiWorkDir, getAiWorkDirInfo } from './services/aiWorkDirService'
+} from './services/agent/agyBinary'
+import { configureAiWorkDir, getAiWorkDirInfo } from './services/document/aiWorkDirService'
 import {
   loadAntigravityCustomizations,
   saveCustomizationFile
-} from './services/configSyncService'
+} from './services/workspace/configSyncService'
 import {
   checkComputerUseStatus,
   listDesktopWindows
-} from './services/computerUseService'
-import { DesktopMcpServer } from './services/desktopMcpServer'
+} from './services/desktop/computerUseService'
+import { DesktopMcpServer } from './services/desktop/desktopMcpServer'
 import {
   IN_APP_BROWSER_PARTITION,
   InAppBrowserService,
   toStandardChromeUserAgent
-} from './services/inAppBrowserService'
-import { InteractionManager } from './services/interactionManager'
+} from './services/browser/inAppBrowserService'
+import { InteractionManager } from './services/desktop/interactionManager'
 import {
   createBlankDocument,
   exportMarkdownToDocx,
   openDocumentFile,
   saveExcelDocumentFile,
   saveTextDocumentFile
-} from './services/documentService'
-import { buildDraftDocxPath } from './services/draftFiles'
-import { getGitChanges, getGitFileDiff } from './services/gitDiffService'
-import { SchedulerService } from './services/schedulerService'
-import { checkOpenPathAllowed } from './services/openPathGuard'
+} from './services/document/documentService'
+import { buildDraftDocxPath } from './services/document/draftFiles'
+import { getGitChanges, getGitFileDiff } from './services/workspace/gitDiffService'
+import { SchedulerService } from './services/scheduler/schedulerService'
+import { checkOpenPathAllowed } from './services/security/openPathGuard'
 import { stat } from 'fs/promises'
 import {
   discoverAllSkills,
   discoverSkillsInDirectory,
   syncGlobalSkillsToOfficialDir
-} from './services/skillDiscovery'
-import { StorageService } from './services/storageService'
-import { AgentAuditTracker, AuditLogService } from './services/auditLogService'
+} from './services/workspace/skillDiscovery'
+import { StorageService } from './services/workspace/storageService'
+import { AgentAuditTracker, AuditLogService } from './services/security/auditLogService'
 import {
   formatClassificationBlockMessage,
   scanAttachmentsForClassification
-} from './services/classificationGuard'
-import { TerminalService } from './services/terminalService'
-import { readSkillPreview, searchWorkspaceEntries } from './services/workspaceService'
-import { UpdateService } from './services/updateService'
+} from './services/security/classificationGuard'
+import { TerminalService } from './services/workspace/terminalService'
+import { readSkillPreview, searchWorkspaceEntries } from './services/workspace/workspaceService'
+import { UpdateService } from './services/update/updateService'
 
 let mainWindow: BrowserWindow | null = null
 let storageService: StorageService

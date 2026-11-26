@@ -9,9 +9,9 @@ import {
   AgyCliAdapter,
   buildComposedPrompt,
   buildSessionKey
-} from '../src/main/agent/agyAdapter'
-import { resolveAgyBinary } from '../src/main/agent/agyBinary'
-import { normalizeBrowserInputUrl } from '../src/main/services/inAppBrowserService'
+} from '../src/main/services/agent/agyAdapter'
+import { resolveAgyBinary } from '../src/main/services/agent/agyBinary'
+import { normalizeBrowserInputUrl } from '../src/main/services/browser/inAppBrowserService'
 import {
   countVietnameseWords,
   deriveLiveDraftTitle,

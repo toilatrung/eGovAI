@@ -1,5 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'child_process'
-import type { TerminalOutputEvent } from '../../shared/types'
+import type { TerminalOutputEvent } from '../../../shared/types'
 
 export class TerminalService {
   private activeCmd: ChildProcessWithoutNullStreams | null = null

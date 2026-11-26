@@ -3,7 +3,7 @@ import { basename, dirname, extname, join } from 'path'
 import mammoth from 'mammoth'
 import * as XLSX from 'xlsx'
 import { exportMarkdownToDocx } from './docxExporter'
-import type { DocKind, ExcelSheetData, OpenedDocument } from '../../shared/types'
+import type { DocKind, ExcelSheetData, OpenedDocument } from '../../../shared/types'
 
 const MARKDOWN_EXTS = new Set(['.md', '.markdown', '.mdx'])
 const JSON_EXTS = new Set(['.json'])

@@ -2,7 +2,7 @@ import { execFile } from 'child_process'
 import { existsSync, readFileSync } from 'fs'
 import { join } from 'path'
 import { promisify } from 'util'
-import type { GitFileChange } from '../../shared/types'
+import type { GitFileChange } from '../../../shared/types'
 
 const execFileAsync = promisify(execFile)
 

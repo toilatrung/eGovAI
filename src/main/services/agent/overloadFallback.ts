@@ -1,7 +1,7 @@
 import { closeSync, openSync, readSync, statSync } from 'fs'
 import { homedir } from 'os'
 import { join } from 'path'
-import type { ReasoningEffort } from '../../shared/types'
+import type { ReasoningEffort } from '../../../shared/types'
 
 /**
  * Xử lý khi máy chủ mô hình báo quá tải (HTTP 503 "No capacity", 429...).

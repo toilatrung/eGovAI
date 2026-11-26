@@ -3,8 +3,8 @@ import { existsSync } from 'fs'
 import { dirname, join } from 'path'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
-import type { ComputerUseStatus, DesktopWindowItem } from '../../shared/types'
-import { detectSystemBrowser } from './playwrightService'
+import type { ComputerUseStatus, DesktopWindowItem } from '../../../shared/types'
+import { detectSystemBrowser } from '../browser/playwrightService'
 
 const execFileAsync = promisify(execFile)
 

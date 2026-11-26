@@ -1,4 +1,4 @@
-import type { AgyStreamEvent, ToolCallBlock, UsageStats } from '../../shared/types'
+import type { AgyStreamEvent, ToolCallBlock, UsageStats } from '../../../shared/types'
 import { isOverloadError } from './overloadFallback'
 
 interface RawUsage {

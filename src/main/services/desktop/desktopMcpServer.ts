@@ -9,8 +9,8 @@ import { shell } from 'electron'
 import { getAgyBinaryPath } from '../agent/agyBinary'
 import { execAgentDesktopArgs } from './computerUseService'
 import type { InteractionManager } from './interactionManager'
-import { PlaywrightWebService } from './playwrightService'
-import type { WebAutomationBackend } from './inAppBrowserService'
+import { PlaywrightWebService } from '../browser/playwrightService'
+import type { WebAutomationBackend } from '../browser/inAppBrowserService'
 import { ScreenCaptureService } from './screenCaptureService'
 import {
   SESSION_ALLOW_SCOPE_TEXT,

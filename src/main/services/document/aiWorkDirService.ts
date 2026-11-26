@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs'
 import { join, relative } from 'path'
-import type { AiWorkDirInfo, AiWorkSession, WorkspaceEntry } from '../../shared/types'
+import type { AiWorkDirInfo, AiWorkSession, WorkspaceEntry } from '../../../shared/types'
 
 const WORKSPACE_CONFIG_FILE = '.vhxh-workspace.local.json'
 const VAULT_RULES = 'Quy tắc'
