@@ -28,9 +28,11 @@ import {
   extractWrittenFileFromToolCall,
   looksLikeDocumentDraft
 } from '../utils/liveDraft'
+import { getDocSegments, type DocSegment } from '../../../shared/docBlocks'
+import { mirrorWebToolCall } from '../utils/webMirror'
 
 export type ActiveView = 'chat' | 'skills' | 'customizations' | 'settings'
-export type AuxTab = 'doc' | 'browser' | 'files' | 'terminal' | 'tasks'
+export type AuxTab = 'doc' | 'plan' | 'browser' | 'files' | 'terminal' | 'tasks'
 
 export interface LiveDraftState {
   conversationId: string
@@ -38,8 +40,65 @@ export interface LiveDraftState {
   title: string
   content: string
   filePath?: string
+  /** Thứ tự khối egov-doc trong tin nhắn (khi văn bản đến từ khối). */
+  docIndex?: number
+  /** Người dùng đã sửa tay trên tab Tài liệu. */
+  edited?: boolean
   streaming: boolean
   updatedAt: number
+}
+
+/**
+ * Dựng bản nháp từ một tin nhắn trả lời: ưu tiên khối `egov-doc` (mới nhất, hoặc theo
+ * `docIndex`), nếu không có thì dùng toàn bộ câu trả lời khi nó thực sự là văn bản hành chính.
+ */
+export function draftFromMessageContent(
+  conversationId: string,
+  messageId: string,
+  content: string,
+  options: { skillTitle?: string; streaming: boolean; docIndex?: number }
+): LiveDraftState | null {
+  const docs = getDocSegments(content)
+  let doc: DocSegment | undefined
+  if (options.docIndex !== undefined) doc = docs.find((d) => d.index === options.docIndex)
+  if (!doc && docs.length > 0) doc = docs[docs.length - 1]
+  if (doc) {
+    return {
+      conversationId,
+      messageId,
+      docIndex: doc.index,
+      title: doc.title || deriveLiveDraftTitle(doc.body, options.skillTitle),
+      content: doc.body,
+      streaming: options.streaming && !doc.closed,
+      updatedAt: Date.now()
+    }
+  }
+  if (looksLikeDocumentDraft(content, Boolean(options.skillTitle))) {
+    return {
+      conversationId,
+      messageId,
+      title: deriveLiveDraftTitle(content, options.skillTitle),
+      content,
+      streaming: options.streaming,
+      updatedAt: Date.now()
+    }
+  }
+  return null
+}
+
+/** Bản nháp của văn bản cuối cùng trong hội thoại (để mở lại hội thoại cũ vẫn thấy văn bản). */
+export function latestDraftOfConversation(conv: Conversation): LiveDraftState | null {
+  for (let i = conv.messages.length - 1; i >= 0; i--) {
+    const msg = conv.messages[i]
+    if (msg.role !== 'assistant' || !msg.content) continue
+    const prevUser = i > 0 ? conv.messages[i - 1] : undefined
+    const draft = draftFromMessageContent(conv.id, msg.id, msg.content, {
+      skillTitle: prevUser?.activeSkill?.title,
+      streaming: false
+    })
+    if (draft) return draft
+  }
+  return null
 }
 
 interface ComposerDraftRequest {
@@ -72,7 +131,12 @@ interface AppState {
   auxTab: AuxTab
   auxWidth: number
   browserUrl: string
+  /** Việc AI đang làm trên web (hiện ở tab Trình duyệt). */
+  browserActivity: { label: string; at: number } | null
+  /** Bản nháp đang hiển thị ở tab Tài liệu — luôn thuộc hội thoại đang mở. */
   liveDraft: LiveDraftState | null
+  /** Bản nháp theo từng hội thoại (B3): hội thoại chạy nền vẫn có văn bản riêng. */
+  draftsByConversation: Record<string, LiveDraftState>
   dismissedDraftMessageId: string | null
   openedDocs: OpenedDocument[]
   activeDocPath: string | null
@@ -101,6 +165,10 @@ interface AppState {
   setBrowserUrl: (url: string) => void
   openInAppBrowser: (url?: string) => void
   dismissLiveDraft: () => void
+  /** Mở văn bản trong một tin nhắn ở tab Tài liệu (nút "Mở trong Tài liệu" trên thẻ văn bản). */
+  openMessageDocument: (conversationId: string, messageId: string, docIndex?: number) => void
+  /** Người dùng sửa bản nháp trên tab Tài liệu (VD điền chỗ trống). */
+  updateLiveDraftContent: (content: string) => void
   pickAndAddProject: () => Promise<void>
   selectProject: (projectId: string) => Promise<void>
   removeProject: (projectId: string) => Promise<void>
@@ -124,6 +192,7 @@ interface AppState {
   refreshActiveDoc: () => Promise<void>
   sendFileToChatComposer: (attachment: AttachedItem, promptText?: string) => void
   clearComposerDraftRequest: () => void
+  /** Gửi một lượt; trả về mã hội thoại đã dùng (undefined nếu không gửi được). */
   sendMessage: (params: {
     text: string
     attachments?: AttachedItem[]
@@ -131,7 +200,17 @@ interface AppState {
     effort?: ReasoningEffort
     mode?: ExecutionMode
     overrideSkill?: SkillItem | null
-  }) => Promise<void>
+    /** Nội dung thực gửi cho AI (mặc định = text hiển thị). */
+    promptText?: string
+    /** undefined = hội thoại đang mở; null = tạo hội thoại mới; chuỗi = hội thoại chỉ định. */
+    targetConversationId?: string | null
+    /** Dự án cho hội thoại mới (mặc định dự án đang mở). */
+    projectId?: string
+    /** false = chạy nền, không chuyển màn hình chat. */
+    activate?: boolean
+    /** Tiêu đề cho hội thoại mới. */
+    newConversationTitle?: string
+  }) => Promise<string | undefined>
   abortCurrentConversation: () => Promise<void>
   /** Re-run the answer to the user message at or before `messageId` (Tạo lại / Thử lại). */
   regenerateMessage: (messageId: string) => Promise<void>
@@ -187,6 +266,8 @@ interface StartTurnParams {
   mode: ExecutionMode
   activeSkill: SkillItem | null
   attachments?: AttachedItem[]
+  /** false = chạy nền, không chuyển màn hình chat sang hội thoại này. */
+  activate?: boolean
 }
 
 async function startTurn(set: StoreSet, get: StoreGet, p: StartTurnParams): Promise<void> {
@@ -214,7 +295,7 @@ async function startTurn(set: StoreSet, get: StoreGet, p: StartTurnParams): Prom
       : [updatedConversation, ...s.conversations]
     return {
       conversations: nextConvs,
-      activeConversationId: updatedConversation.id,
+      activeConversationId: p.activate === false ? s.activeConversationId : updatedConversation.id,
       streamingConversationIds: {
         ...s.streamingConversationIds,
         [updatedConversation.id]: true
@@ -315,7 +396,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   auxTab: 'doc',
   auxWidth: 500,
   browserUrl: '',
+  browserActivity: null,
   liveDraft: null,
+  draftsByConversation: {},
   dismissedDraftMessageId: null,
   openedDocs: [],
   activeDocPath: null,
@@ -460,9 +543,51 @@ export const useAppStore = create<AppState>((set, get) => ({
       browserUrl: url !== undefined && url.trim() ? url.trim() : s.browserUrl
     })),
 
+  openMessageDocument: (conversationId, messageId, docIndex) => {
+    const conv = get().conversations.find((c) => c.id === conversationId)
+    const idx = conv?.messages.findIndex((m) => m.id === messageId) ?? -1
+    if (!conv || idx < 0) return
+    const msg = conv.messages[idx]
+    const prevUser = idx > 0 ? conv.messages[idx - 1] : undefined
+    const draft = draftFromMessageContent(conversationId, messageId, msg.content, {
+      skillTitle: prevUser?.activeSkill?.title,
+      streaming: msg.status === 'streaming',
+      docIndex
+    }) ?? {
+      conversationId,
+      messageId,
+      title: deriveLiveDraftTitle(msg.content, prevUser?.activeSkill?.title),
+      content: msg.content,
+      streaming: msg.status === 'streaming',
+      updatedAt: Date.now()
+    }
+    set((s) => ({
+      liveDraft: s.activeConversationId === conversationId ? draft : s.liveDraft,
+      draftsByConversation: { ...s.draftsByConversation, [conversationId]: draft },
+      dismissedDraftMessageId:
+        s.dismissedDraftMessageId === messageId ? null : s.dismissedDraftMessageId,
+      auxOpen: true,
+      auxTab: 'doc',
+      activeDocPath: LIVE_DRAFT_TAB_ID
+    }))
+  },
+
+  updateLiveDraftContent: (content) =>
+    set((s) => {
+      if (!s.liveDraft) return s
+      const next = { ...s.liveDraft, content, edited: true, updatedAt: Date.now() }
+      return {
+        liveDraft: next,
+        draftsByConversation: { ...s.draftsByConversation, [next.conversationId]: next }
+      }
+    }),
+
   dismissLiveDraft: () =>
     set((s) => ({
       liveDraft: null,
+      draftsByConversation: Object.fromEntries(
+        Object.entries(s.draftsByConversation).filter(([id]) => id !== s.activeConversationId)
+      ),
       dismissedDraftMessageId: s.liveDraft?.messageId ?? s.dismissedDraftMessageId,
       activeDocPath:
         s.activeDocPath === LIVE_DRAFT_TAB_ID
@@ -704,15 +829,31 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   clearComposerDraftRequest: () => set({ composerDraftRequest: null }),
 
-  sendMessage: async ({ text, attachments, modelId, effort, mode, overrideSkill }) => {
+  sendMessage: async ({
+    text,
+    attachments,
+    modelId,
+    effort,
+    mode,
+    overrideSkill,
+    promptText,
+    targetConversationId,
+    projectId,
+    activate,
+    newConversationTitle
+  }) => {
     const state = get()
-    const existing = state.conversations.find((c) => c.id === state.activeConversationId)
+    const targetId =
+      targetConversationId === undefined ? state.activeConversationId : targetConversationId
+    const existing = targetId ? state.conversations.find((c) => c.id === targetId) : undefined
     // An existing conversation always runs in its own project's folder.
-    const project = state.projects.find((p) => p.id === (existing?.projectId ?? state.activeProjectId))
-    if (!project) return
+    const project = state.projects.find(
+      (p) => p.id === (existing?.projectId ?? projectId ?? state.activeProjectId)
+    )
+    if (!project) return undefined
 
     const trimmed = text.trim()
-    if (!trimmed) return
+    if (!trimmed) return undefined
 
     const activeSkill = overrideSkill !== undefined ? overrideSkill : state.selectedSkill
     const effectiveModel = modelId || state.settings.defaultModelId || undefined
@@ -726,7 +867,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       conversation = {
         id: generateId(),
         projectId: project.id,
-        title: deriveTitle(trimmed, activeSkill),
+        title: newConversationTitle?.trim() || deriveTitle(trimmed, activeSkill),
         createdAt: now,
         updatedAt: now,
         modelId: effectiveModel,
@@ -752,14 +893,16 @@ export const useAppStore = create<AppState>((set, get) => ({
       },
       keptMessages: conversation.messages,
       userMsg,
-      promptText: trimmed,
+      promptText: promptText?.trim() || trimmed,
       projectPath: project.path,
       modelId: effectiveModel,
       effort: effectiveEffort,
       mode: effectiveMode,
       activeSkill,
-      attachments
+      attachments,
+      activate
     })
+    return conversation.id
   },
 
   abortCurrentConversation: async () => {
@@ -837,9 +980,12 @@ export const useAppStore = create<AppState>((set, get) => ({
       let updatedConv: Conversation = conv
       let finished = false
       let nextLiveDraft = s.liveDraft
+      let nextDrafts = s.draftsByConversation
       let nextAuxOpen = s.auxOpen
       let nextAuxTab = s.auxTab
       let nextActiveDocPath = s.activeDocPath
+      let nextBrowserUrl = s.browserUrl
+      let nextBrowserActivity = s.browserActivity
       const isActiveConv = s.activeConversationId === event.conversationId
       const isDismissed = s.dismissedDraftMessageId === event.messageId
 
@@ -860,24 +1006,29 @@ export const useAppStore = create<AppState>((set, get) => ({
           switch (event.type) {
             case 'text_delta': {
               const nextContent = msg.content + event.delta
-              if (isActiveConv && !isDismissed) {
+              if (!isDismissed) {
+                const prevDraft = nextDrafts[event.conversationId]
                 const alreadyDraftingThis =
-                  s.liveDraft &&
-                  s.liveDraft.messageId === event.messageId &&
-                  !s.liveDraft.filePath
-                if (alreadyDraftingThis || looksLikeDocumentDraft(nextContent, Boolean(skillTitle))) {
-                  nextLiveDraft = {
-                    conversationId: event.conversationId,
-                    messageId: event.messageId,
-                    title: deriveLiveDraftTitle(nextContent, skillTitle),
-                    content: nextContent,
-                    streaming: true,
-                    updatedAt: Date.now()
-                  }
-                  if (!alreadyDraftingThis) {
-                    nextAuxOpen = true
-                    nextAuxTab = 'doc'
-                    nextActiveDocPath = LIVE_DRAFT_TAB_ID
+                  prevDraft !== undefined &&
+                  prevDraft.messageId === event.messageId &&
+                  !prevDraft.filePath
+                const draft = draftFromMessageContent(event.conversationId, event.messageId, nextContent, {
+                  skillTitle,
+                  streaming: true
+                })
+                if (draft) {
+                  nextDrafts = { ...nextDrafts, [event.conversationId]: draft }
+                  if (isActiveConv) {
+                    nextLiveDraft = draft
+                    // Chỉ tự chuyển sang tab Tài liệu lần đầu, và KHÔNG giành tab khi người dùng
+                    // đang xem Trình duyệt (B4).
+                    if (!alreadyDraftingThis && s.auxTab !== 'browser') {
+                      nextAuxOpen = true
+                      nextAuxTab = 'doc'
+                      nextActiveDocPath = LIVE_DRAFT_TAB_ID
+                    } else if (!alreadyDraftingThis && s.activeDocPath === null) {
+                      nextActiveDocPath = LIVE_DRAFT_TAB_ID
+                    }
                   }
                 }
               }
@@ -901,6 +1052,21 @@ export const useAppStore = create<AppState>((set, get) => ({
                 idx >= 0
                   ? existing.map((t, i) => (i === idx ? { ...t, ...event.toolCall } : t))
                   : [...existing, event.toolCall]
+
+              // Tra cứu web bằng công cụ nội bộ của lõi: mở cùng trang ở tab Trình duyệt để
+              // cán bộ thấy AI đang tìm / đọc gì (trước đây chạy ngầm, tab Trình duyệt trống).
+              if (isActiveConv && idx < 0) {
+                const mirror = mirrorWebToolCall(event.toolCall)
+                if (mirror) {
+                  nextBrowserUrl = mirror.url
+                  nextBrowserActivity = { label: mirror.label, at: Date.now() }
+                  const draftingThisMessage = nextDrafts[event.conversationId]?.messageId === event.messageId
+                  if (!draftingThisMessage) {
+                    nextAuxOpen = true
+                    nextAuxTab = 'browser'
+                  }
+                }
+              }
 
               if (isActiveConv) {
                 const written = extractWrittenFileFromToolCall(event.toolCall)
@@ -935,15 +1101,25 @@ export const useAppStore = create<AppState>((set, get) => ({
               finished = true
               const finalContent =
                 msg.content.trim().length > 0 ? msg.content : (event.response ?? msg.content)
-              if (nextLiveDraft && nextLiveDraft.messageId === event.messageId) {
-                nextLiveDraft = {
-                  ...nextLiveDraft,
-                  title: nextLiveDraft.filePath
-                    ? nextLiveDraft.title
-                    : deriveLiveDraftTitle(finalContent, skillTitle),
-                  content: nextLiveDraft.filePath ? nextLiveDraft.content : finalContent,
-                  streaming: false,
-                  updatedAt: Date.now()
+              const prevDraft = nextDrafts[event.conversationId]
+              if (prevDraft && prevDraft.messageId === event.messageId) {
+                const finalDraft = prevDraft.filePath
+                  ? { ...prevDraft, streaming: false, updatedAt: Date.now() }
+                  : (draftFromMessageContent(event.conversationId, event.messageId, finalContent, {
+                      skillTitle,
+                      streaming: false
+                    }) ?? { ...prevDraft, streaming: false, updatedAt: Date.now() })
+                nextDrafts = { ...nextDrafts, [event.conversationId]: finalDraft }
+                if (isActiveConv) nextLiveDraft = finalDraft
+              } else if (!isDismissed && !prevDraft?.filePath) {
+                // Văn bản chỉ xuất hiện trong kết quả cuối (không qua text_delta).
+                const finalDraft = draftFromMessageContent(event.conversationId, event.messageId, finalContent, {
+                  skillTitle,
+                  streaming: false
+                })
+                if (finalDraft) {
+                  nextDrafts = { ...nextDrafts, [event.conversationId]: finalDraft }
+                  if (isActiveConv) nextLiveDraft = finalDraft
                 }
               }
               return {
@@ -975,6 +1151,18 @@ export const useAppStore = create<AppState>((set, get) => ({
                 status: 'aborted' as const
               }
 
+            case 'status':
+              // Máy chủ quá tải / đã chuyển mô hình dự phòng. Khi mô hình mới bắt đầu viết,
+              // tách đoạn để phần tóm tắt không dính vào câu đang viết dở.
+              return {
+                ...msg,
+                statusNote: event.message,
+                content:
+                  event.modelId && msg.content.trim().length > 0 && !msg.content.endsWith('\n\n')
+                    ? `${msg.content.replace(/\s+$/, '')}\n\n`
+                    : msg.content
+              }
+
             default:
               return msg
           }
@@ -999,13 +1187,32 @@ export const useAppStore = create<AppState>((set, get) => ({
         void window.googleAI.saveConversation(updatedConv)
       }
 
+      if (finished) {
+        const d = nextDrafts[event.conversationId]
+        if (d && d.messageId === event.messageId && d.streaming) {
+          nextDrafts = { ...nextDrafts, [event.conversationId]: { ...d, streaming: false } }
+        }
+      }
+      // Bản nháp ghi qua công cụ tệp cũng thuộc về hội thoại của nó.
+      if (
+        isActiveConv &&
+        nextLiveDraft &&
+        nextLiveDraft !== s.liveDraft &&
+        nextLiveDraft.conversationId === event.conversationId
+      ) {
+        nextDrafts = { ...nextDrafts, [event.conversationId]: nextLiveDraft }
+      }
+
       return {
         conversations: nextConvs,
         streamingConversationIds: nextStreaming,
         liveDraft: nextLiveDraft,
+        draftsByConversation: nextDrafts,
         auxOpen: nextAuxOpen,
         auxTab: nextAuxTab,
-        activeDocPath: nextActiveDocPath
+        activeDocPath: nextActiveDocPath,
+        browserUrl: nextBrowserUrl,
+        browserActivity: finished ? null : nextBrowserActivity
       }
     })
 
@@ -1014,3 +1221,31 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   }
 }))
+
+/**
+ * Khi đổi hội thoại, tab Tài liệu hiển thị bản nháp của chính hội thoại đó (B3) thay vì giữ
+ * văn bản của hội thoại khác.
+ */
+useAppStore.subscribe((state, prev) => {
+  if (state.activeConversationId === prev.activeConversationId) return
+  const convId = state.activeConversationId
+  let draft: LiveDraftState | null = convId ? (state.draftsByConversation[convId] ?? null) : null
+  if (!draft && convId) {
+    const conv = state.conversations.find((c) => c.id === convId)
+    draft = conv ? latestDraftOfConversation(conv) : null
+    if (draft && state.dismissedDraftMessageId === draft.messageId) draft = null
+  }
+  if (draft === state.liveDraft) return
+  useAppStore.setState({
+    liveDraft: draft,
+    draftsByConversation:
+      draft && convId ? { ...state.draftsByConversation, [convId]: draft } : state.draftsByConversation,
+    activeDocPath: draft
+      ? state.activeDocPath === null || state.activeDocPath === LIVE_DRAFT_TAB_ID
+        ? LIVE_DRAFT_TAB_ID
+        : state.activeDocPath
+      : state.activeDocPath === LIVE_DRAFT_TAB_ID
+        ? (state.openedDocs[0]?.path ?? null)
+        : state.activeDocPath
+  })
+})

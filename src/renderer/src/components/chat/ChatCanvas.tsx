@@ -25,11 +25,22 @@ import type {
   WorkspaceEntry
 } from '../../../../shared/types'
 import { useAppStore } from '../../stores/useAppStore'
+import { usePlanStore } from '../../stores/usePlanStore'
 import { MessageItem } from './MessageItem'
 import { ChipSelect } from './ChipSelect'
 import { EgovMark } from '../brand/EgovLogo'
 import { InteractivePromptBar } from '../interaction/InteractivePromptBar'
 import { useGlobalShortcuts } from '../../utils/globalShortcuts'
+import {
+  AI_PRESETS,
+  DEFAULT_AI_PRESET,
+  curateModels,
+  resolveModelChoice,
+  type AiPresetId
+} from '../../../../shared/aiPresets'
+
+/** Cách làm việc trong ô chat: các chế độ của lõi + "Theo kế hoạch" (soạn nhiều văn bản theo quy trình). */
+export type ComposerMode = ExecutionMode | 'workflow'
 
 const ADD_PROJECT_OPTION = '__add_project__'
 
@@ -71,6 +82,7 @@ export function ChatCanvas(): React.JSX.Element {
     openFileInStudio,
     clearComposerDraftRequest
   } = useAppStore()
+  const createPlanFromRequest = usePlanStore((s) => s.createPlanFromRequest)
 
   useGlobalShortcuts()
 
@@ -81,9 +93,19 @@ export function ChatCanvas(): React.JSX.Element {
 
   const [input, setInput] = useState('')
   const [attachments, setAttachments] = useState<AttachedItem[]>([])
-  const [modelId, setModelId] = useState<string>(settings.defaultModelId)
-  const [effort, setEffort] = useState<ReasoningEffort>(settings.effort)
-  const [mode, setMode] = useState<ExecutionMode>(settings.mode)
+  // U1: một ô "Chế độ AI" thay cho danh sách mô hình + mức suy luận.
+  const [preset, setPreset] = useState<AiPresetId>(settings.aiPreset ?? DEFAULT_AI_PRESET)
+  const useCustomModel = Boolean(settings.defaultModelId)
+  const [modelFamily, setModelFamily] = useState<string>(settings.modelFamily ?? '')
+  const modelFamilies = useMemo(() => curateModels(agyStatus?.models ?? []), [agyStatus?.models])
+  const resolvedModel = useCustomModel
+    ? { modelId: settings.defaultModelId, effort: settings.effort as ReasoningEffort }
+    : resolveModelChoice(preset, modelFamily, agyStatus?.models ?? [])
+  const modelId = resolvedModel.modelId
+  const effort = resolvedModel.effort
+  const [composerMode, setComposerMode] = useState<ComposerMode>(settings.mode)
+  const mode: ExecutionMode = composerMode === 'workflow' ? 'default' : composerMode
+  const setMode = (m: ExecutionMode): void => setComposerMode(m)
   const [isDragging, setIsDragging] = useState(false)
 
   // Slash & Mention Menus
@@ -100,13 +122,16 @@ export function ChatCanvas(): React.JSX.Element {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
-    setModelId(activeConversation?.modelId || settings.defaultModelId)
-  }, [activeConversation?.id, activeConversation?.modelId, settings.defaultModelId])
+    setComposerMode(settings.mode)
+  }, [settings.mode])
 
   useEffect(() => {
-    setEffort(settings.effort)
-    setMode(settings.mode)
-  }, [settings.effort, settings.mode])
+    if (settings.aiPreset) setPreset(settings.aiPreset)
+  }, [settings.aiPreset])
+
+  useEffect(() => {
+    setModelFamily(settings.modelFamily ?? '')
+  }, [settings.modelFamily])
 
   const jumpToLatest = (): void => {
     followingLatest.current = true
@@ -338,6 +363,13 @@ export function ChatCanvas(): React.JSX.Element {
     setAttachments([])
     setSlashQuery(null)
     setMentionQuery(null)
+    // B6: vừa gửi thì luôn theo dõi câu trả lời mới.
+    jumpToLatest()
+
+    if (composerMode === 'workflow') {
+      await createPlanFromRequest(text, currentAttachments, { modelId: modelId || undefined, effort })
+      return
+    }
 
     await sendMessage({
       text,
@@ -804,40 +836,72 @@ export function ChatCanvas(): React.JSX.Element {
                 <Paperclip className="h-4 w-4" />
               </button>
 
-              <ChipSelect
-                label={t('chat.model')}
-                icon={Cpu}
-                value={modelId}
-                onChange={setModelId}
-                options={[
-                  { value: '', label: t('settings.autoModel'), short: 'Tự động' },
-                  ...(agyStatus?.models.map((m) => ({ value: m.id, label: m.name })) ?? [])
-                ]}
-              />
+              {!useCustomModel && modelFamilies.length > 0 && (
+                <ChipSelect
+                  label="Mô hình"
+                  icon={Cpu}
+                  value={modelFamilies.some((fam) => fam.base === modelFamily) ? modelFamily : ''}
+                  onChange={(v) => {
+                    setModelFamily(v)
+                    void updateSettings({ modelFamily: v })
+                  }}
+                  options={[
+                    {
+                      value: '',
+                      label: 'eGovAI Autopilot',
+                      short: 'eGovAI Autopilot',
+                      hint: 'Tự chọn mô hình phù hợp với Chế độ AI và công việc (khuyên dùng)'
+                    },
+                    ...modelFamilies.map((fam) => ({ value: fam.base, label: fam.label }))
+                  ]}
+                />
+              )}
 
-              <ChipSelect<ReasoningEffort>
-                label={t('chat.effort')}
-                icon={Brain}
-                value={effort}
-                onChange={setEffort}
-                options={[
-                  { value: 'low', label: t('chat.effortLevels.low'), hint: 'Câu hỏi ngắn, trả lời nhanh' },
-                  { value: 'medium', label: t('chat.effortLevels.medium'), hint: 'Phù hợp phần lớn công việc' },
-                  { value: 'high', label: t('chat.effortLevels.high'), hint: 'Văn bản dài, nhiều bước' },
-                  { value: 'xhigh', label: t('chat.effortLevels.xhigh'), hint: 'Kỹ nhất, chậm hơn' }
-                ]}
-              />
+              {useCustomModel ? (
+                <ChipSelect
+                  label="Mô hình (Cài đặt nâng cao)"
+                  icon={Cpu}
+                  value="custom"
+                  onChange={() => setActiveView('settings')}
+                  options={[
+                    {
+                      value: 'custom',
+                      label:
+                        agyStatus?.models.find((m) => m.id === settings.defaultModelId)?.name ??
+                        settings.defaultModelId,
+                      short: 'Mô hình riêng',
+                      hint: 'Đang dùng mô hình chọn trong Cài đặt. Bỏ chọn ở Cài đặt để dùng Chế độ AI.'
+                    }
+                  ]}
+                />
+              ) : (
+                <ChipSelect<AiPresetId>
+                  label="Chế độ AI"
+                  icon={Brain}
+                  value={preset}
+                  onChange={(v) => {
+                    setPreset(v)
+                    void updateSettings({ aiPreset: v })
+                  }}
+                  options={AI_PRESETS.map((p) => ({ value: p.id, label: p.label, hint: p.hint }))}
+                />
+              )}
 
-              <ChipSelect<ExecutionMode>
-                className="hidden sm:block"
-                label={t('chat.mode')}
+              <ChipSelect<ComposerMode>
+                label="Cách làm"
                 icon={SlidersHorizontal}
-                value={mode}
-                onChange={setMode}
+                value={composerMode}
+                onChange={setComposerMode}
                 options={[
-                  { value: 'default', label: t('chat.modes.default'), hint: 'Hỏi trước khi sửa tệp' },
-                  { value: 'plan', label: t('chat.modes.plan'), hint: 'Chỉ lập kế hoạch, không sửa tệp' },
-                  { value: 'accept-edits', label: t('chat.modes.accept-edits'), hint: 'Tự sửa tệp, không hỏi lại' }
+                  { value: 'default', label: 'Trò chuyện', short: 'Trò chuyện', hint: 'Hỏi đáp, soạn từng văn bản' },
+                  {
+                    value: 'workflow',
+                    label: 'Theo kế hoạch',
+                    short: 'Theo kế hoạch',
+                    hint: 'Lập danh sách nhiều văn bản rồi soạn lần lượt (tab Kế hoạch)'
+                  },
+                  { value: 'plan', label: 'Chỉ lên phương án', short: 'Lên phương án', hint: 'AI đề xuất cách làm, không sửa tệp' },
+                  { value: 'accept-edits', label: 'Tự sửa tệp', short: 'Tự sửa tệp', hint: 'AI được sửa tệp trong dự án mà không hỏi lại' }
                 ]}
               />
 

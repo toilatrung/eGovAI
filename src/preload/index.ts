@@ -166,6 +166,14 @@ const googleAIApi = {
     markdownText: string
   ): Promise<{ path: string; mtimeMs: number } | null> =>
     ipcRenderer.invoke('doc:exportDocx', defaultName, defaultDir, markdownText),
+  /** Lưu văn bản thành .docx trong thư mục dự án (không hỏi hộp thoại), trả về đường dẫn. */
+  saveDraftDocx: (
+    projectDir: string,
+    title: string,
+    markdownText: string,
+    subfolder?: string
+  ): Promise<{ path: string; mtimeMs: number }> =>
+    ipcRenderer.invoke('doc:saveDraftDocx', projectDir, title, markdownText, subfolder),
   createDocument: (
     dirPath: string,
     fileName: string,

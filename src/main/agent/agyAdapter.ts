@@ -1,15 +1,54 @@
-import { spawn, type ChildProcessWithoutNullStreams } from 'child_process'
+import { execFile, spawn, type ChildProcessWithoutNullStreams } from 'child_process'
 import { delimiter } from 'path'
+import { promisify } from 'util'
 import type { AgyStreamEvent, SendPromptPayload } from '../../shared/types'
 import { formatAgencyProfileSummary } from '../../shared/agencyProfile'
 import { resolveAgentDesktopBinary } from '../services/computerUseService'
 import { DESKTOP_MCP_SERVER_NAME, DESKTOP_MCP_TOOLS } from '../services/desktopMcpServer'
-import { getAgyBinaryPath } from './agyBinary'
+import { getAgyBinaryPath, parseAgyModelsOutput } from './agyBinary'
 import { NdjsonLineBuffer, parseAgyNdjsonLine } from './ndjsonParser'
+import {
+  agyTranscriptPath,
+  buildFallbackPrompt,
+  defaultAgyBrainRoot,
+  describeModel,
+  effortForModel,
+  fileSizeOrZero,
+  isOverloadError,
+  pickStrongFallbackModel,
+  pickSummaryModel,
+  readNewOverloadErrors,
+  type FallbackKind
+} from './overloadFallback'
+
+const execFileAsync = promisify(execFile)
 
 export interface ComposePromptOptions {
   /** Omit static session-level instructions already sent earlier in this persistent session. */
   omitSessionPreamble?: boolean
+}
+
+export function formatVietnameseDate(d: Date): string {
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  return `ngày ${dd} tháng ${mm} năm ${d.getFullYear()}`
+}
+
+/**
+ * Quy tắc soạn văn bản: toàn văn đặt trong khối ```egov-doc``` để ứng dụng hiển thị ở tab
+ * Tài liệu và xuất Word, còn chat chỉ giữ vài câu trao đổi (không lặp lại toàn văn).
+ */
+export function buildDraftingRules(todayLabel?: string): string {
+  const today = todayLabel ? ` Hôm nay là ${todayLabel}; ngày ban hành mặc định là hôm nay.` : ''
+  return (
+    '[Quy tắc soạn thảo văn bản: Khi người dùng yêu cầu soạn hoặc sửa một văn bản (công văn, tờ trình, báo cáo, kế hoạch, quyết định, thông báo, giấy mời, biên bản…), đặt TOÀN VĂN văn bản hoàn chỉnh trong ĐÚNG MỘT khối có dạng:\n' +
+    '```egov-doc title="<Loại văn bản – trích yếu ngắn>"\n<toàn văn>\n```\n' +
+    'Ngoài khối chỉ viết tối đa 2–3 câu ngắn (ví dụ: đã soạn gì, còn thiếu thông tin nào). KHÔNG viết lời dẫn, lưu ý hay danh sách "thông tin còn thiếu" bên trong khối. Ứng dụng tự hiển thị khối ở tab Tài liệu và xuất Word; người dùng là cán bộ, không dùng Markdown, nên đừng nhắc tới Markdown hay định dạng kỹ thuật. ' +
+    'Thể thức (NĐ 30/2020/NĐ-CP): phần đầu là bảng 2 cột — cột trái: cơ quan chủ quản (nếu có), cơ quan ban hành (in hoa, đậm), "Số: …/…", trích yếu "V/v …" (với công văn); cột phải: Quốc hiệu, Tiêu ngữ, địa danh và ngày tháng (in nghiêng). Tên loại văn bản (VD "## GIẤY MỜI", "## BÁO CÁO") và dòng trích yếu ngay dưới (VD "## Về việc …") viết thành tiêu đề cấp 2 để được căn giữa, in đậm; các mục lớn (I., II., 1., 2.) dùng tiêu đề cấp 3 hoặc chữ đậm. Phần cuối là bảng 2 cột: cột trái "Nơi nhận:" và danh sách; cột phải quyền hạn, chức vụ người ký và họ tên. Xuống dòng trong ô bảng bằng <br>. KHÔNG dùng &nbsp;, KHÔNG dùng HTML nào khác, KHÔNG dùng đường kẻ ---. ' +
+    'Điền đầy đủ từ hồ sơ đơn vị và từ những gì người dùng đã cung cấp trong hội thoại; chỉ để [ … ] cho dữ liệu thật sự chưa biết.' +
+    today +
+    ' Chính quyền địa phương hiện tổ chức 2 cấp (tỉnh và xã/phường, không còn cấp huyện); nếu người dùng nhắc cấp huyện thì soạn theo yêu cầu nhưng nhắc nhẹ ngoài khối. Khi sửa văn bản, trả lại TOÀN VĂN bản mới trong một khối egov-doc mới. Câu hỏi tra cứu, giải thích thông thường thì trả lời bình thường, KHÔNG dùng khối egov-doc. KHÔNG mất thời gian chạy lệnh quét ổ đĩa hay dò tìm Python.]'
+  )
 }
 
 export function buildSessionPreamble(payload: SendPromptPayload): string[] {
@@ -32,8 +71,10 @@ export function buildSessionPreamble(payload: SendPromptPayload): string[] {
     '[Thanh Interactive Prompt hỏi ý kiến & phê duyệt: Khi cần người dùng phê duyệt kế hoạch, xác nhận thao tác quan trọng, chọn phương án hoặc bổ sung thông tin/hồ sơ còn thiếu giữa chừng, gọi công cụ MCP `desktop_ask_user` (máy chủ `egovai-desktop`) để hiện thanh Interactive Prompt ngay phía trên ô chat.]'
   )
 
+  sections.push(buildDraftingRules(payload.todayLabel ?? formatVietnameseDate(new Date())))
+
   sections.push(
-    '[Quy tắc soạn thảo nhanh: Khi soạn văn bản, báo cáo, công văn hoặc tờ trình, hãy trình bày trực tiếp toàn văn chuẩn thể thức bằng Markdown ngay trong phản hồi (ứng dụng tự hiển thị trực tiếp theo thời gian thực bên tab Tài liệu và có sẵn nút xuất Word .docx). KHÔNG mất thời gian chạy lệnh quét ổ đĩa hay dò tìm Python (`Get-ChildItem -Recurse`, `where python`...) nếu máy không có sẵn Python.]'
+    '[Tra cứu & nguồn: Khi trả lời có dùng thông tin tra cứu trên mạng, ghi nguồn kèm ĐƯỜNG DẪN đầy đủ (https://…) của trang gốc (tên miền của báo/cổng thông tin như chinhphu.vn, thuvienphapluat.vn) để cán bộ kiểm chứng; KHÔNG dùng và KHÔNG mở các đường dẫn chuyển hướng dạng vertexaisearch.cloud.google.com/grounding-api-redirect — nếu kết quả tìm kiếm không cho địa chỉ trang gốc thì ghi tên trang và tiêu đề bài là đủ. Chỉ mở trang bằng web_open khi thật sự cần đọc toàn văn.Nếu không truy cập được trang (bị chặn, lỗi), nói rõ điều đó và ghi "theo hiểu biết, cần kiểm chứng" — KHÔNG được viết như thể đã đọc được trang. Không bịa số hiệu văn bản pháp luật; nếu không chắc số hiệu/ngày ban hành thì nói rõ là chưa chắc.]'
   )
 
   if (payload.computerUseEnabled) {
@@ -46,7 +87,7 @@ export function buildSessionPreamble(payload: SendPromptPayload): string[] {
       '[Công cụ tra cứu web & điều khiển máy tính (máy chủ MCP `egovai-desktop` tích hợp Playwright + agent-desktop + chụp ảnh màn hình) luôn sẵn sàng theo nhu cầu — ứng dụng tự hỏi xác nhận người dùng 1 lần trước khi thực thi thao tác trên máy/trình duyệt: ' +
         '(1) GOM THAO TÁC (`desktop_batch`): Luôn gom các bước đoán trước được vào 1 lệnh `desktop_batch` (VD: mở Notepad + chờ + gõ chữ: `[{action:"launch_app",app:"notepad.exe"},{action:"wait",ms:700},{action:"type",text:"xin chào"}]`) để giảm số lượt gọi mô hình; `desktop_batch` tự trả kèm trạng thái cuối nên không cần gọi thêm `desktop_snapshot`. ' +
         '(2) UIA TRƯỚC, ẢNH MÀN HÌNH DỰ PHÒNG: Ưu tiên `desktop_find` / cây UIA trước; nếu ứng dụng Electron (Zalo, Teams...) có cây UIA nghèo/thiếu phần tử thì dùng ngay `desktop_screenshot` (kèm `desktop_zoom` nếu chữ nhỏ) rồi dùng `desktop_click_at` theo tọa độ ảnh và `desktop_batch` (`type` không cần @ref sẽ nhập thẳng tiếng Việt vào ô đang focus). ' +
-        '(3) TÁC VỤ WEB & TRA CỨU: Ưu tiên duyệt web trực tiếp trong Trình duyệt tích hợp ngay trong ứng dụng eGovAI qua (`web_open`, `web_snapshot`, `web_read_text`, `web_click`, `web_fill`, `web_close`) mà không cần mở trình duyệt ngoài hay dùng điều khiển máy tính. KHÔNG chạy chrome.exe hay agent-desktop qua run_command.' +
+        '(3) TÁC VỤ WEB & TRA CỨU: Ưu tiên duyệt web trực tiếp trong Trình duyệt tích hợp ngay trong ứng dụng eGovAI qua (`web_open`, `web_snapshot`, `web_read_text`, `web_click`, `web_fill`, `web_close`) mà không cần mở trình duyệt ngoài hay dùng điều khiển máy tính. KHÔNG chạy chrome.exe hay agent-desktop qua run_command. Gọi thẳng các công cụ MCP này theo tham số: `web_open {url}`, `web_snapshot {}`, `web_read_text {maxChars?}`, `web_click {ref}` (mã @wN), `web_fill {ref, text, submit?}`, `web_close {}` — KHÔNG cần đọc tệp định nghĩa/schema công cụ trước khi gọi.' +
         speedRule +
         ']'
     )
@@ -179,12 +220,21 @@ interface ActiveTurn {
   messageId: string
   onEvent: (event: AgyStreamEvent) => void
   gotResultOrError: boolean
+  /** Đã có ít nhất một bước công cụ hoàn tất trong lượt này (việc chính đã làm). */
+  didWork: boolean
+  /** Các lỗi quá tải đã thấy (khử trùng giữa stdout và nhật ký phiên). */
+  seenOverloads: Set<string>
+  fallbackStarted: boolean
+  watchTimer: ReturnType<typeof setInterval> | null
+  transcriptOffset: number
 }
 
 interface PersistentAgySession {
   conversationId: string
   child: ChildProcessWithoutNullStreams
   sessionKey: string
+  binaryPath: string
+  payload: SendPromptPayload
   agyConversationId?: string
   lastPreambleKey: string
   activeTurn: ActiveTurn | null
@@ -193,6 +243,10 @@ interface PersistentAgySession {
   closed: boolean
   wasAborted: boolean
   stderrText: string
+  /** Tiến trình chạy đúng một lượt rồi đóng (dùng cho lượt chuyển mô hình dự phòng). */
+  oneShot: boolean
+  /** Cho phép chuyển mô hình khi máy chủ quá tải (tắt cho chính lượt dự phòng). */
+  allowFallback: boolean
 }
 
 export interface AgyAdapterOptions {
@@ -206,10 +260,40 @@ export interface AgyAdapterOptions {
   spawnFn?: typeof spawn
   /** Optional binary resolver override for testing. */
   resolveBinaryFn?: (overridePath?: string) => Promise<string | null>
+  /** Chuyển mô hình khi máy chủ báo quá tải (default: true). */
+  overloadFallback?: boolean
+  /** Chu kỳ đọc nhật ký phiên agy để phát hiện quá tải (default: 2000ms). */
+  overloadPollMs?: number
+  /** Thư mục brain của agy (default: ~/.gemini/antigravity-cli/brain). */
+  brainRootDir?: string
+  /** Danh sách mô hình khả dụng (default: chạy `agy models`). */
+  listModelsFn?: (binaryPath: string) => Promise<Array<{ id: string }>>
 }
 
 const DEFAULT_IDLE_TTL_MS = 10 * 60 * 1000
 const DEFAULT_MAX_SESSIONS = 3
+const DEFAULT_OVERLOAD_POLL_MS = 2000
+
+async function listAgyModels(binaryPath: string): Promise<Array<{ id: string }>> {
+  const { stdout } = await execFileAsync(binaryPath, ['models'], {
+    timeout: 20000,
+    windowsHide: true
+  })
+  return parseAgyModelsOutput(stdout)
+}
+
+function newTurn(messageId: string, onEvent: (event: AgyStreamEvent) => void): ActiveTurn {
+  return {
+    messageId,
+    onEvent,
+    gotResultOrError: false,
+    didWork: false,
+    seenOverloads: new Set(),
+    fallbackStarted: false,
+    watchTimer: null,
+    transcriptOffset: 0
+  }
+}
 
 export class AgyCliAdapter {
   private sessions = new Map<string, PersistentAgySession>()
@@ -218,6 +302,11 @@ export class AgyCliAdapter {
   private readonly maxSessions: number
   private readonly spawnFn: typeof spawn
   private readonly resolveBinaryFn: (overridePath?: string) => Promise<string | null>
+  private readonly overloadFallback: boolean
+  private readonly overloadPollMs: number
+  private readonly brainRootDir: string
+  private readonly listModelsFn: (binaryPath: string) => Promise<Array<{ id: string }>>
+  private modelsCache = new Map<string, Promise<Array<{ id: string }>>>()
 
   constructor(options?: AgyAdapterOptions) {
     this.keepAlive = options?.keepAlive ?? true
@@ -225,6 +314,22 @@ export class AgyCliAdapter {
     this.maxSessions = options?.maxSessions ?? DEFAULT_MAX_SESSIONS
     this.spawnFn = options?.spawnFn ?? spawn
     this.resolveBinaryFn = options?.resolveBinaryFn ?? getAgyBinaryPath
+    this.overloadFallback = options?.overloadFallback ?? true
+    this.overloadPollMs = options?.overloadPollMs ?? DEFAULT_OVERLOAD_POLL_MS
+    this.brainRootDir = options?.brainRootDir ?? defaultAgyBrainRoot()
+    this.listModelsFn = options?.listModelsFn ?? listAgyModels
+  }
+
+  private getModels(binaryPath: string): Promise<Array<{ id: string }>> {
+    let cached = this.modelsCache.get(binaryPath)
+    if (!cached) {
+      cached = this.listModelsFn(binaryPath).catch(() => {
+        this.modelsCache.delete(binaryPath)
+        return []
+      })
+      this.modelsCache.set(binaryPath, cached)
+    }
+    return cached
   }
 
   private clearIdleTimer(session: PersistentAgySession): void {
@@ -236,7 +341,7 @@ export class AgyCliAdapter {
 
   private scheduleIdleClose(session: PersistentAgySession): void {
     this.clearIdleTimer(session)
-    if (!this.keepAlive) {
+    if (!this.keepAlive || session.oneShot) {
       this.closeSessionGracefully(session)
       return
     }
@@ -277,6 +382,27 @@ export class AgyCliAdapter {
     }, 1500).unref?.()
   }
 
+  /** Dừng ngay tiến trình của phiên (người dùng bấm Dừng, hoặc chuyển mô hình dự phòng). */
+  private killSession(session: PersistentAgySession): void {
+    this.clearIdleTimer(session)
+    if (session.activeTurn) this.stopOverloadWatch(session.activeTurn)
+    session.wasAborted = true
+    session.closed = true
+    session.activeTurn = null
+    if (this.sessions.get(session.conversationId) === session) {
+      this.sessions.delete(session.conversationId)
+    }
+    try {
+      session.child.kill('SIGTERM')
+    } catch {
+      try {
+        session.child.kill()
+      } catch {
+        // ignore
+      }
+    }
+  }
+
   private evictIdleSessionIfNeeded(): void {
     if (this.sessions.size < this.maxSessions) return
     let oldestIdle: PersistentAgySession | null = null
@@ -297,7 +423,7 @@ export class AgyCliAdapter {
     payload: SendPromptPayload
   ): boolean {
     if (!this.keepAlive) return false
-    if (session.closed || session.activeTurn) return false
+    if (session.closed || session.activeTurn || session.oneShot) return false
     if (session.child.killed || session.child.exitCode !== null || !session.child.stdin.writable) {
       return false
     }
@@ -306,6 +432,121 @@ export class AgyCliAdapter {
     if (!payload.agyConversationId || !session.agyConversationId) return false
     if (payload.agyConversationId !== session.agyConversationId) return false
     return true
+  }
+
+  // ---- Phát hiện máy chủ quá tải & chuyển mô hình dự phòng ----
+
+  private startOverloadWatch(session: PersistentAgySession, turn: ActiveTurn): void {
+    if (turn.watchTimer || !session.agyConversationId) return
+    const path = agyTranscriptPath(this.brainRootDir, session.agyConversationId)
+    // Bỏ qua lỗi cũ của các lượt trước trong cùng hội thoại.
+    turn.transcriptOffset = fileSizeOrZero(path)
+    turn.watchTimer = setInterval(() => {
+      if (session.activeTurn !== turn) {
+        this.stopOverloadWatch(turn)
+        return
+      }
+      const { errors, offset } = readNewOverloadErrors(path, turn.transcriptOffset)
+      turn.transcriptOffset = offset
+      for (const err of errors) this.handleOverload(session, turn, err)
+    }, this.overloadPollMs)
+    turn.watchTimer.unref?.()
+  }
+
+  private stopOverloadWatch(turn: ActiveTurn): void {
+    if (turn.watchTimer) {
+      clearInterval(turn.watchTimer)
+      turn.watchTimer = null
+    }
+  }
+
+  private emitStatus(
+    session: PersistentAgySession,
+    turn: ActiveTurn,
+    message: string,
+    modelId?: string
+  ): void {
+    turn.onEvent({
+      type: 'status',
+      conversationId: session.conversationId,
+      messageId: turn.messageId,
+      message,
+      modelId
+    })
+  }
+
+  private handleOverload(session: PersistentAgySession, turn: ActiveTurn, errorText: string): void {
+    if (session.activeTurn !== turn) return
+    const key = errorText.trim()
+    if (turn.seenOverloads.has(key)) return
+    turn.seenOverloads.add(key)
+
+    const current = describeModel(session.payload.modelId)
+    if (!this.overloadFallback || !session.allowFallback || turn.fallbackStarted) {
+      this.emitStatus(
+        session,
+        turn,
+        `Máy chủ mô hình ${current} đang quá tải — lõi AI đang tự thử lại (lần ${turn.seenOverloads.size}).`
+      )
+      return
+    }
+
+    turn.fallbackStarted = true
+    const kind: FallbackKind = turn.didWork ? 'summary' : 'continue'
+    this.emitStatus(
+      session,
+      turn,
+      `Máy chủ mô hình ${current} đang quá tải — đang chuyển sang mô hình dự phòng…`
+    )
+    void this.startFallback(session, turn, kind)
+  }
+
+  private async startFallback(
+    session: PersistentAgySession,
+    turn: ActiveTurn,
+    kind: FallbackKind
+  ): Promise<void> {
+    const models = await this.getModels(session.binaryPath)
+    // Lượt có thể đã xong (lõi tự thử lại thành công) hoặc người dùng đã dừng trong lúc chờ.
+    if (session.activeTurn !== turn || session.closed) return
+
+    const current = session.payload.modelId
+    const target =
+      kind === 'summary'
+        ? pickSummaryModel(current, models)
+        : pickStrongFallbackModel(current, models)
+    const agyConversationId = session.agyConversationId
+    if (!target || !agyConversationId) {
+      this.emitStatus(
+        session,
+        turn,
+        `Không có mô hình dự phòng phù hợp — lõi AI đang tự thử lại với ${describeModel(current)}.`
+      )
+      return
+    }
+
+    this.killSession(session)
+
+    this.emitStatus(
+      session,
+      turn,
+      kind === 'summary'
+        ? `Máy chủ ${describeModel(current)} quá tải sau khi đã làm xong việc chính — chuyển sang ${target} để viết phần tóm tắt.`
+        : `Máy chủ ${describeModel(current)} quá tải — chuyển sang ${target} để xử lý tiếp.`,
+      target
+    )
+
+    const fallbackPayload: SendPromptPayload = {
+      ...session.payload,
+      messageId: turn.messageId,
+      modelId: target,
+      agyConversationId,
+      effort: effortForModel(target)
+    }
+    this.spawnWorker(session.binaryPath, fallbackPayload, buildFallbackPrompt(kind), turn.onEvent, {
+      oneShot: true,
+      allowFallback: false
+    })
   }
 
   async sendPrompt(
@@ -335,11 +576,10 @@ export class AgyCliAdapter {
       existing.lastPreambleKey = preambleKey
       existing.lastUsedAt = Date.now()
       existing.stderrText = ''
-      existing.activeTurn = {
-        messageId: payload.messageId,
-        onEvent,
-        gotResultOrError: false
-      }
+      existing.payload = payload
+      const turn = newTurn(payload.messageId, onEvent)
+      existing.activeTurn = turn
+      this.startOverloadWatch(existing, turn)
       const composedPrompt = buildComposedPrompt(payload, { omitSessionPreamble })
       existing.child.stdin.write(buildAgyStdinMessage(composedPrompt), 'utf8')
       return
@@ -356,7 +596,21 @@ export class AgyCliAdapter {
 
     this.evictIdleSessionIfNeeded()
 
-    const composedPrompt = buildComposedPrompt(payload)
+    this.spawnWorker(binaryPath, payload, buildComposedPrompt(payload), onEvent, {
+      oneShot: !this.keepAlive,
+      allowFallback: true,
+      sessionKey,
+      preambleKey
+    })
+  }
+
+  private spawnWorker(
+    binaryPath: string,
+    payload: SendPromptPayload,
+    composedPrompt: string,
+    onEvent: (event: AgyStreamEvent) => void,
+    opts: { oneShot: boolean; allowFallback: boolean; sessionKey?: string; preambleKey?: string }
+  ): void {
     const args = buildAgyCliArgs(payload)
 
     const { binDir } = resolveAgentDesktopBinary()
@@ -377,19 +631,19 @@ export class AgyCliAdapter {
     const session: PersistentAgySession = {
       conversationId: payload.conversationId,
       child,
-      sessionKey,
+      sessionKey: opts.sessionKey ?? buildSessionKey(binaryPath, payload),
+      binaryPath,
+      payload,
       agyConversationId: payload.agyConversationId,
-      lastPreambleKey: preambleKey,
-      activeTurn: {
-        messageId: payload.messageId,
-        onEvent,
-        gotResultOrError: false
-      },
+      lastPreambleKey: opts.preambleKey ?? computeSessionPreambleKey(payload),
+      activeTurn: newTurn(payload.messageId, onEvent),
       lastUsedAt: Date.now(),
       idleTimer: null,
       closed: false,
       wasAborted: false,
-      stderrText: ''
+      stderrText: '',
+      oneShot: opts.oneShot,
+      allowFallback: opts.allowFallback
     }
 
     this.sessions.set(payload.conversationId, session)
@@ -397,13 +651,21 @@ export class AgyCliAdapter {
     child.stdin.on('error', () => {})
 
     const lineMsg = buildAgyStdinMessage(composedPrompt)
-    if (this.keepAlive) {
-      child.stdin.write(lineMsg, 'utf8')
-    } else {
+    if (opts.oneShot) {
       child.stdin.end(lineMsg, 'utf8')
+    } else {
+      child.stdin.write(lineMsg, 'utf8')
     }
+    // Tiếp tục hội thoại cũ: đã biết mã hội thoại nên theo dõi quá tải ngay.
+    if (session.activeTurn) this.startOverloadWatch(session, session.activeTurn)
 
     const buffer = new NdjsonLineBuffer()
+
+    const finishTurn = (turn: ActiveTurn): void => {
+      turn.gotResultOrError = true
+      this.stopOverloadWatch(turn)
+      session.activeTurn = null
+    }
 
     const handleLine = (line: string): void => {
       const turn = session.activeTurn
@@ -411,16 +673,26 @@ export class AgyCliAdapter {
       const event = parseAgyNdjsonLine(line, payload.conversationId, turn.messageId)
       if (!event) return
 
-      if (event.type === 'init' && event.agyConversationId) {
-        session.agyConversationId = event.agyConversationId
+      if (event.type === 'init') {
+        if (event.agyConversationId) session.agyConversationId = event.agyConversationId
+        this.startOverloadWatch(session, turn)
+      }
+
+      // Lỗi quá tải nếu lõi có báo ra stdout — xử lý giống như đọc từ nhật ký phiên.
+      if (event.type === 'status' && isOverloadError(event.message)) {
+        this.handleOverload(session, turn, event.message)
+        return
+      }
+
+      if (event.type === 'tool_update' && event.toolCall.state === 'DONE') {
+        turn.didWork = true
       }
 
       if (event.type === 'result') {
         if (event.agyConversationId) {
           session.agyConversationId = event.agyConversationId
         }
-        turn.gotResultOrError = true
-        session.activeTurn = null
+        finishTurn(turn)
         session.lastUsedAt = Date.now()
         this.scheduleIdleClose(session)
         turn.onEvent(event)
@@ -428,8 +700,7 @@ export class AgyCliAdapter {
       }
 
       if (event.type === 'error') {
-        turn.gotResultOrError = true
-        session.activeTurn = null
+        finishTurn(turn)
         turn.onEvent(event)
         this.closeSessionGracefully(session)
         return
@@ -457,6 +728,7 @@ export class AgyCliAdapter {
         this.sessions.delete(payload.conversationId)
       }
       const turn = session.activeTurn
+      if (turn) this.stopOverloadWatch(turn)
       session.activeTurn = null
       if (turn && !turn.gotResultOrError && !session.wasAborted) {
         turn.gotResultOrError = true
@@ -481,6 +753,7 @@ export class AgyCliAdapter {
       }
 
       const turn = session.activeTurn
+      if (turn) this.stopOverloadWatch(turn)
       session.activeTurn = null
 
       if (!turn || signal === 'SIGTERM' || signal === 'SIGKILL' || session.wasAborted) {
@@ -493,6 +766,7 @@ export class AgyCliAdapter {
             type: 'result',
             conversationId: payload.conversationId,
             messageId: turn.messageId,
+            agyConversationId: session.agyConversationId,
             status: 'SUCCESS'
           })
         } else {
@@ -516,20 +790,7 @@ export class AgyCliAdapter {
   abort(conversationId: string): boolean {
     const session = this.sessions.get(conversationId)
     if (!session) return false
-    this.clearIdleTimer(session)
-    session.wasAborted = true
-    session.closed = true
-    session.activeTurn = null
-    this.sessions.delete(conversationId)
-    try {
-      session.child.kill('SIGTERM')
-    } catch {
-      try {
-        session.child.kill()
-      } catch {
-        // ignore
-      }
-    }
+    this.killSession(session)
     return true
   }
 

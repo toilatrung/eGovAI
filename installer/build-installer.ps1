@@ -6,7 +6,11 @@
 #   ... -SkipAgy         # bỏ qua đóng gói lõi agy.exe (chỉ dùng cho thử nghiệm nội bộ)
 #   ... -RequireSign     # dừng lại nếu chưa cấu hình ký số (release.ps1 dùng mặc định)
 # Ký số: đặt biến môi trường theo docs\code-signing.md (EGOVAI_SIGN_PFX, EGOVAI_SIGN_THUMBPRINT hoặc EGOVAI_SIGN_DLIB + EGOVAI_SIGN_METADATA).
-param([switch]$SkipApp, [switch]$RequireSign, [string]$AgyPath, [switch]$SkipAgy)
+# Ký từ xa (SignPath, chạy trên GitHub Actions — xem .github\workflows\release.yml):
+#   ... -Phase Stage                       # ghép ứng dụng + trình gỡ cài, chép mọi tệp PE CHƯA ký vào build\to-sign rồi dừng
+#   ... -Phase Bundle -SignedDir <thư mục> # chép tệp đã ký từ <thư mục> đè vào ứng dụng, rồi nén và biên dịch bộ cài
+param([switch]$SkipApp, [switch]$RequireSign, [string]$AgyPath, [switch]$SkipAgy,
+  [ValidateSet('All', 'Stage', 'Bundle')][string]$Phase = 'All', [string]$SignedDir)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
@@ -23,9 +27,14 @@ function Step($m) { Write-Host "`n==> $m" -ForegroundColor Cyan }
 
 . (Join-Path $inst 'codesign.ps1')
 $sign = Get-SignConfig
+if ($Phase -eq 'Bundle') {
+  $SkipApp = $true
+  if (-not $SignedDir -or -not (Test-Path $SignedDir)) { throw '-Phase Bundle cần -SignedDir trỏ tới thư mục tệp đã ký.' }
+}
+if ($Phase -ne 'All' -and $sign) { Write-Host 'Bỏ qua cấu hình ký cục bộ vì đang ký theo pha (SignPath).' -ForegroundColor Yellow; $sign = $null }
 if ($sign) { Write-Host "Ký số: $($sign.Label) — signtool: $($sign.SignTool)" -ForegroundColor Green }
-elseif ($RequireSign) { throw 'Chưa cấu hình ký số mà có -RequireSign. Xem docs\code-signing.md.' }
-else { Write-UnsignedWarning }
+elseif ($RequireSign -and $Phase -eq 'All') { throw 'Chưa cấu hình ký số mà có -RequireSign. Xem docs\code-signing.md.' }
+elseif ($Phase -eq 'All') { Write-UnsignedWarning }
 
 # Thông tin phiên bản cho bộ cài/gỡ cài (AssemblyFileVersion phải là số dạng a.b.c.d).
 $numVer = ($version -replace '[-+].*$', '')
@@ -116,19 +125,61 @@ if ($sign) {
   Invoke-CodeSign $sign @(Get-PeFiles $stage)
 }
 
+$uninst = Join-Path $build 'uninstall.exe'
+if ($Phase -ne 'Bundle') {
+  Step 'Biên dịch trình gỡ cài đặt'
+  & $csc /nologo /codepage:65001 /target:winexe /optimize+ /platform:anycpu "/win32icon:$ico" "/win32manifest:$(Join-Path $inst 'app.manifest')" `
+    /r:System.Windows.Forms.dll "/out:$uninst" (Join-Path $inst 'Uninstaller.cs') $asmUninst
+  if ($LASTEXITCODE -ne 0) { throw 'Biên dịch trình gỡ cài đặt thất bại' }
+  if ($sign) { Step 'Ký số trình gỡ cài đặt'; Invoke-CodeSign $sign @($uninst) -Force }
+}
+
+if ($Phase -eq 'Stage') {
+  # Gom các tệp PE chưa có chữ ký hợp lệ (bỏ qua tệp Microsoft/Google đã ký sẵn) để gửi đi ký.
+  Step 'Gom tệp cần ký vào build\to-sign'
+  $toSign = Join-Path $build 'to-sign'
+  if (Test-Path $toSign) { Remove-Item $toSign -Recurse -Force }
+  $n = 0
+  foreach ($f in @(Get-PeFiles $stage)) {
+    if (Test-SignedValid $f) { continue }
+    $dest = Join-Path $toSign ('app\' + $f.Substring($stage.Length + 1))
+    New-Item -ItemType Directory (Split-Path $dest -Parent) -Force | Out-Null
+    Copy-Item $f $dest
+    $n++
+  }
+  Copy-Item $uninst (Join-Path $toSign 'uninstall.exe')
+  Write-Host ("  {0} tệp ứng dụng + uninstall.exe → {1}" -f $n, $toSign) -ForegroundColor Green
+  return
+}
+
+if ($Phase -eq 'Bundle') {
+  Step "Chép tệp đã ký từ $SignedDir"
+  $signedApp = Join-Path $SignedDir 'app'
+  $n = 0
+  if (Test-Path $signedApp) {
+    foreach ($f in Get-ChildItem $signedApp -Recurse -File) {
+      $rel = $f.FullName.Substring((Resolve-Path $signedApp).Path.Length + 1)
+      $dest = Join-Path $stage $rel
+      if (-not (Test-Path $dest)) { throw "Tệp đã ký không có trong ứng dụng: $rel" }
+      Copy-Item $f.FullName $dest -Force
+      $n++
+    }
+  }
+  Copy-Item (Join-Path $SignedDir 'uninstall.exe') $uninst -Force
+  Write-Host "  Đã chép $n tệp ứng dụng + uninstall.exe."
+  $bad = @(@(Get-PeFiles $stage) + $uninst | Where-Object { -not (Test-SignedValid $_) })
+  if ($bad.Count) {
+    $msg = "Còn $($bad.Count) tệp chưa có chữ ký hợp lệ:`n  " + ($bad -join "`n  ")
+    if ($RequireSign) { throw $msg } else { Write-Host $msg -ForegroundColor Yellow }
+  }
+}
+
 Step 'Nén gói ứng dụng (payload.zip)'
 $payload = Join-Path $build 'payload.zip'
 Remove-Item $payload -ErrorAction SilentlyContinue
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 [System.IO.Compression.ZipFile]::CreateFromDirectory($stage, $payload, [System.IO.Compression.CompressionLevel]::Optimal, $false)
 '{0:N1} MB' -f ((Get-Item $payload).Length / 1MB) | Write-Host
-
-Step 'Biên dịch trình gỡ cài đặt'
-$uninst = Join-Path $build 'uninstall.exe'
-& $csc /nologo /codepage:65001 /target:winexe /optimize+ /platform:anycpu "/win32icon:$ico" "/win32manifest:$(Join-Path $inst 'app.manifest')" `
-  /r:System.Windows.Forms.dll "/out:$uninst" (Join-Path $inst 'Uninstaller.cs') $asmUninst
-if ($LASTEXITCODE -ne 0) { throw 'Biên dịch trình gỡ cài đặt thất bại' }
-if ($sign) { Step 'Ký số trình gỡ cài đặt'; Invoke-CodeSign $sign @($uninst) -Force }
 
 Step 'Biên dịch bộ cài'
 New-Item -ItemType Directory $dist -Force | Out-Null
@@ -146,4 +197,4 @@ $hash = (Get-FileHash $setup -Algorithm SHA256).Hash
 $sigStatus = (Get-AuthenticodeSignature $setup).Status
 Step "Hoàn tất: $setup"
 '{0:N1} MB  SHA256 {1}  Chữ ký: {2}' -f ((Get-Item $setup).Length / 1MB), $hash, $sigStatus | Write-Host
-if (-not $sign) { Write-UnsignedWarning }
+if (-not $sign -and $Phase -eq 'All') { Write-UnsignedWarning }

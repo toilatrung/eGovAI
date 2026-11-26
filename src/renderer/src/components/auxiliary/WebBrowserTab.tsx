@@ -49,6 +49,7 @@ function normalizeAddress(raw: string): string {
 export function WebBrowserTab({ isLight, visible }: WebBrowserTabProps): React.JSX.Element {
   const browserUrl = useAppStore((s) => s.browserUrl)
   const setBrowserUrl = useAppStore((s) => s.setBrowserUrl)
+  const browserActivity = useAppStore((s) => s.browserActivity)
 
   const webviewRef = useRef<ElectronWebViewElement | null>(null)
   const [addressInput, setAddressInput] = useState(browserUrl || '')
@@ -215,6 +216,13 @@ export function WebBrowserTab({ isLight, visible }: WebBrowserTabProps): React.J
           <ExternalLink className="h-3.5 w-3.5" />
         </button>
       </div>
+
+      {browserActivity && (
+        <div className="flex shrink-0 items-center gap-2 border-b border-brand/20 bg-brand-soft px-3 py-1.5 text-[12px] text-brand">
+          <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+          <span className="min-w-0 flex-1 truncate font-medium">AI {browserActivity.label.charAt(0).toLowerCase() + browserActivity.label.slice(1)}</span>
+        </div>
+      )}
 
       {/* Main WebView Surface */}
       <div className="relative min-h-0 flex-1 bg-canvas">

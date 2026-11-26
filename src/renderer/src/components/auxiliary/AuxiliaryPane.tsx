@@ -1,16 +1,21 @@
 import { useRef } from 'react'
-import { FileText, Globe, FolderGit2, Terminal, Clock, X } from 'lucide-react'
+import { FileText, Globe, FolderGit2, Terminal, Clock, X, ListChecks } from 'lucide-react'
 import { useAppStore, type AuxTab } from '../../stores/useAppStore'
 import { DocumentStudioTab } from './DocumentStudioTab'
 import { WebBrowserTab } from './WebBrowserTab'
 import { FilesDiffTab } from './FilesDiffTab'
 import { TerminalTab } from './TerminalTab'
 import { ScheduledTasksTab } from './ScheduledTasksTab'
+import { PlanTab } from './PlanTab'
+import { usePlanStore } from '../../stores/usePlanStore'
 
 export function AuxiliaryPane(): React.JSX.Element {
   const { auxTab, auxWidth, settings, openedDocs, setAuxTab, setAuxOpen, setAuxWidth } =
     useAppStore()
   const isLight = settings.theme === 'light'
+  const runningPlan = usePlanStore((s) => s.runningPlanId !== null)
+  // B11: bảng hẹp thì chỉ tab đang mở hiện chữ, các tab khác chỉ hiện biểu tượng.
+  const compactTabs = auxWidth < 640
   const draggingRef = useRef(false)
 
   const handleResizeMouseDown = (e: React.MouseEvent): void => {
@@ -41,6 +46,11 @@ export function AuxiliaryPane(): React.JSX.Element {
       label: 'Tài liệu',
       icon: <FileText className="h-3.5 w-3.5" />,
       badge: openedDocs.length > 0 ? openedDocs.length : undefined
+    },
+    {
+      id: 'plan',
+      label: 'Kế hoạch',
+      icon: <ListChecks className={`h-3.5 w-3.5${runningPlan ? ' animate-pulse text-brand' : ''}`} />
     },
     {
       id: 'browser',
@@ -93,12 +103,13 @@ export function AuxiliaryPane(): React.JSX.Element {
                 onClick={() => setAuxTab(tab.id)}
                 role="tab"
                 aria-selected={active}
+                title={tab.label}
                 className={`relative flex shrink-0 items-center gap-1.5 px-2.5 text-[12.5px] font-medium transition-colors duration-150 after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full after:transition-colors after:duration-150 ${
                   active ? 'text-ink after:bg-brand' : 'text-muted after:bg-transparent hover:text-ink'
                 }`}
               >
                 {tab.icon}
-                <span>{tab.label}</span>
+                {(!compactTabs || active) && <span>{tab.label}</span>}
                 {tab.badge !== undefined && (
                   <span className="tabular rounded-full bg-sunken px-1.5 text-[11px] text-muted">
                     {tab.badge}
@@ -120,6 +131,7 @@ export function AuxiliaryPane(): React.JSX.Element {
 
       {/* Active Tab Content */}
       {auxTab === 'doc' && <DocumentStudioTab isLight={isLight} />}
+      {auxTab === 'plan' && <PlanTab isLight={isLight} />}
       <WebBrowserTab isLight={isLight} visible={auxTab === 'browser'} />
       {auxTab === 'files' && <FilesDiffTab isLight={isLight} />}
       {auxTab === 'terminal' && <TerminalTab isLight={isLight} />}

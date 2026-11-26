@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SignPath artifact configuration "app-files": dán vào SignPath (Project eGovAI → Artifact Configurations).
+     Gói gửi lên là build/to-sign do `build-installer.ps1 -Phase Stage` tạo:
+       uninstall.exe            trình gỡ cài đặt
+       app/**                   các tệp PE chưa ký trong ứng dụng (eGovAI.exe, DLL của Electron, mô-đun .node/.exe trong node_modules)
+     Tệp đã có chữ ký của nhà phát hành (agy.exe của Google, d3dcompiler_47.dll của Microsoft) không nằm trong gói. -->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file-set>
+      <include path="uninstall.exe" />
+      <include path="app/**/*.exe" min-matches="1" max-matches="unbounded" />
+      <include path="app/**/*.dll" min-matches="0" max-matches="unbounded" />
+      <include path="app/**/*.node" min-matches="0" max-matches="unbounded" />
+      <for-each>
+        <authenticode-sign />
+      </for-each>
+    </pe-file-set>
+  </zip-file>
+</artifact-configuration>

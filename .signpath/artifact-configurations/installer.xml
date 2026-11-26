@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SignPath artifact configuration "installer": dán vào SignPath (Project eGovAI → Artifact Configurations).
+     Gói gửi lên chỉ chứa dist/eGovAI-Setup-<version>.exe do `build-installer.ps1 -Phase Bundle` tạo. -->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file-set>
+      <include path="eGovAI-Setup-*.exe" min-matches="1" max-matches="1" />
+      <for-each>
+        <authenticode-sign />
+      </for-each>
+    </pe-file-set>
+  </zip-file>
+</artifact-configuration>

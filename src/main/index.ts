@@ -1,4 +1,13 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme, safeStorage, shell } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  nativeTheme,
+  safeStorage,
+  session,
+  shell
+} from 'electron'
 import { basename, join } from 'path'
 import { randomUUID } from 'crypto'
 import type {
@@ -28,7 +37,11 @@ import {
   listDesktopWindows
 } from './services/computerUseService'
 import { DesktopMcpServer } from './services/desktopMcpServer'
-import { InAppBrowserService } from './services/inAppBrowserService'
+import {
+  IN_APP_BROWSER_PARTITION,
+  InAppBrowserService,
+  toStandardChromeUserAgent
+} from './services/inAppBrowserService'
 import { InteractionManager } from './services/interactionManager'
 import {
   createBlankDocument,
@@ -37,6 +50,7 @@ import {
   saveExcelDocumentFile,
   saveTextDocumentFile
 } from './services/documentService'
+import { buildDraftDocxPath } from './services/draftFiles'
 import { getGitChanges, getGitFileDiff } from './services/gitDiffService'
 import { SchedulerService } from './services/schedulerService'
 import { checkOpenPathAllowed } from './services/openPathGuard'
@@ -515,6 +529,19 @@ function registerIpcHandlers(): void {
   })
 
   ipcMain.handle(
+    'doc:saveDraftDocx',
+    async (_event, projectDir: string, title: string, markdownText: string, subfolder?: string) => {
+      const norm = (p: string): string => p.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase()
+      const known = storageService.getState().projects.some((p) => norm(p.path) === norm(projectDir))
+      if (!known) throw new Error('Thư mục dự án không hợp lệ.')
+      const target = buildDraftDocxPath(projectDir, title, subfolder)
+      const exported = await exportMarkdownToDocx(target, markdownText)
+      auditTracker.documentExported(exported.path, 'docx')
+      return exported
+    }
+  )
+
+  ipcMain.handle(
     'doc:exportDocx',
     async (_event, defaultName: string, defaultDir: string, markdownText: string) => {
       if (!mainWindow) return null
@@ -612,6 +639,12 @@ function registerIpcHandlers(): void {
 app.whenReady().then(async () => {
   // Keep the internal name: it decides the userData folder that holds saved projects and conversations.
   app.setName('GoogleAI')
+  // Trình duyệt tích hợp dùng User-Agent Chrome chuẩn (bỏ "GoogleAI/…", "Electron/…")
+  // để các cổng thông tin nhà nước không từ chối truy cập.
+  {
+    const browserSession = session.fromPartition(IN_APP_BROWSER_PARTITION)
+    browserSession.setUserAgent(toStandardChromeUserAgent(browserSession.getUserAgent()))
+  }
   storageService = new StorageService()
   auditLog = new AuditLogService(
     app.getPath('userData'),

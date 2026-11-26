@@ -2,9 +2,6 @@ import type { ToolCallBlock } from '../../../shared/types'
 
 export const LIVE_DRAFT_TAB_ID = '__egovai_live_draft__'
 
-const ADMIN_DOC_PATTERN =
-  /(?:CỘNG\s+HÒA\s+XÃ\s+HỘI\s+CHỦ\s+NGHĨA\s+VIỆT\s+NAM|Độc\s+lập\s*[-–—]\s*Tự\s+do|\b(?:CÔNG\s+VĂN|TỜ\s+TRÌNH|BÁO\s+CÁO|QUYẾT\s+ĐỊNH|KẾ\s+HOẠCH|BIÊN\s+BẢN|THÔNG\s+BÁO|NGHỊ\s+QUYẾT|CHƯƠNG\s+TRÌNH)\b)/
-
 const VIEWABLE_DOC_EXTS = new Set(['.md', '.markdown', '.txt', '.docx', '.xlsx', '.xls', '.csv', '.json', '.pdf'])
 
 const FILE_WRITE_TOOLS = new Set([
@@ -17,43 +14,110 @@ const FILE_WRITE_TOOLS = new Set([
   'save_file'
 ])
 
+const DOC_SIGNALS: RegExp[] = [
+  /CỘNG\s+HÒA\s+XÃ\s+HỘI\s+CHỦ\s+NGHĨA\s+VIỆT\s+NAM/i,
+  /Độc\s+lập\s*[-–—]\s*Tự\s+do\s*[-–—]\s*Hạnh\s+phúc/i,
+  /(^|\n|\|)\s*\**\s*Kính\s+gửi\s*:/i,
+  /(^|\n|\|)\s*\**\s*Nơi\s+nhận\s*:/i,
+  /\bV\/v\s+\S/,
+  /(^|\n|\|)\s*\**\s*Số\s*:\s*[.…\d\s]*\/[A-ZĐ]/
+]
+
 /**
- * Nhận diện khi câu trả lời đang stream có dạng soạn thảo tài liệu/văn bản
- * để tự động hiển thị trực tiếp trong tab Tài liệu.
+ * Nhận diện câu trả lời KHÔNG dùng khối egov-doc nhưng thực chất là văn bản hành chính,
+ * để vẫn hiển thị ở tab Tài liệu. Cố ý chặt: cần ít nhất 2 dấu hiệu thể thức (Quốc hiệu,
+ * Tiêu ngữ, Kính gửi, Nơi nhận, V/v, Số ký hiệu), hoặc 1 dấu hiệu khi người dùng đã chọn
+ * kỹ năng soạn thảo. Câu trả lời tra cứu dài có tiêu đề/đánh số KHÔNG bị coi là văn bản.
  */
 export function looksLikeDocumentDraft(content: string, hasActiveSkill = false): boolean {
   const trimmed = content.trim()
   if (trimmed.length < 80) return false
-  if (ADMIN_DOC_PATTERN.test(trimmed)) return true
-  if (/^#{1,3}\s+\S/m.test(trimmed) && trimmed.length >= 160) return true
-  if (hasActiveSkill && trimmed.length >= 140) return true
-  if (trimmed.length >= 450 && trimmed.split(/\r?\n\s*\r?\n/).length >= 3) return true
-  return false
+  const hits = DOC_SIGNALS.filter((re) => re.test(trimmed)).length
+  return hits >= 2 || (hasActiveSkill && hits >= 1)
 }
 
+const DOC_TYPES: Array<[RegExp, string]> = [
+  [/^CÔNG\s+VĂN$/, 'Công văn'],
+  [/^TỜ\s+TRÌNH$/, 'Tờ trình'],
+  [/^BÁO\s+CÁO$/, 'Báo cáo'],
+  [/^QUYẾT\s+ĐỊNH$/, 'Quyết định'],
+  [/^KẾ\s+HOẠCH$/, 'Kế hoạch'],
+  [/^BIÊN\s+BẢN$/, 'Biên bản'],
+  [/^THÔNG\s+BÁO$/, 'Thông báo'],
+  [/^NGHỊ\s+QUYẾT$/, 'Nghị quyết'],
+  [/^CHƯƠNG\s+TRÌNH$/, 'Chương trình'],
+  [/^GIẤY\s+MỜI$/, 'Giấy mời'],
+  [/^PHƯƠNG\s+ÁN$/, 'Phương án']
+]
+
+/** Tiêu đề phụ không bao giờ là tên văn bản. */
+const SKIP_TITLE_RE =
+  /^(các\s+thông\s+tin|thông\s+tin\s+còn\s+thiếu|lưu\s+ý|ghi\s+chú|một\s+số\s+lưu\s+ý|nguồn|tài\s+liệu\s+tham\s+khảo|hướng\s+dẫn)/i
+const NUMBERED_RE = /^([0-9]+|[IVXLC]+|[a-zđ])[.)]\s/i
+
+function cleanInline(text: string): string {
+  return text
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/[*_`#|]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function clip(text: string, max = 60): string {
+  return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text
+}
+
+/**
+ * Đặt tên bản nháp theo loại văn bản và trích yếu ("Báo cáo – Kết quả giảm nghèo 2026"),
+ * bỏ qua tiêu đề phụ như "Các thông tin còn thiếu…" hay mục đánh số "1. …".
+ */
 export function deriveLiveDraftTitle(content: string, fallbackSkillTitle?: string): string {
-  const headingMatch = content.match(/^#{1,3}\s+(.+)$/m)
-  if (headingMatch?.[1]) {
-    const clean = headingMatch[1].replace(/[*_`#]/g, '').trim()
-    if (clean.length >= 3) {
-      return clean.length > 42 ? `${clean.slice(0, 42)}…` : clean
+  const lines = content.split(/\r?\n/)
+
+  // 1) Tiêu đề bắt đầu bằng loại văn bản: "# BÁO CÁO KẾT QUẢ …"
+  for (const raw of lines) {
+    const m = raw.match(/^#{1,3}\s+(.+)$/)
+    if (!m) continue
+    const text = cleanInline(m[1])
+    if (
+      DOC_TYPES.some(
+        ([, label]) =>
+          text.toUpperCase().startsWith(label.toUpperCase()) && text.length > label.length + 2
+      )
+    ) {
+      return clip(text)
     }
   }
 
-  const docTypeMatch = content.match(
-    /\b(CÔNG VĂN|TỜ TRÌNH|BÁO CÁO|QUYẾT ĐỊNH|KẾ HOẠCH|BIÊN BẢN|THÔNG BÁO|NGHỊ QUYẾT|CHƯƠNG TRÌNH)\b[^\r\n]{0,40}/
-  )
-  if (docTypeMatch?.[0]) {
-    const clean = docTypeMatch[0].replace(/[*_`]/g, '').trim()
-    return clean.length > 42 ? `${clean.slice(0, 42)}…` : clean
+  // 2) Dòng chỉ có loại văn bản ("BÁO CÁO") + dòng trích yếu kế tiếp
+  for (let i = 0; i < lines.length; i++) {
+    const text = cleanInline(lines[i].replace(/^#{1,6}\s+/, ''))
+    const type = DOC_TYPES.find(([re]) => re.test(text))
+    if (!type) continue
+    for (let j = i + 1; j < Math.min(lines.length, i + 4); j++) {
+      const next = cleanInline(lines[j].replace(/^#{1,6}\s+/, ''))
+      if (next) return clip(`${type[1]} – ${next.replace(/^V\/v\s+/i, '')}`)
+    }
+    return type[1]
   }
 
-  if (fallbackSkillTitle?.trim()) {
-    const clean = fallbackSkillTitle.trim()
-    return clean.length > 42 ? `${clean.slice(0, 42)}…` : clean
+  // 3) Có trích yếu "V/v …" → công văn
+  for (const raw of lines) {
+    const m = cleanInline(raw).match(/\bV\/v\s+(.+)$/)
+    if (m) return clip(`Công văn – V/v ${m[1]}`)
   }
 
-  return 'Bản nháp đang soạn'
+  // 4) Tiêu đề đầu tiên không phải tiêu đề phụ / mục đánh số
+  for (const raw of lines) {
+    const m = raw.match(/^#{1,3}\s+(.+)$/)
+    if (!m) continue
+    const text = cleanInline(m[1])
+    if (text.length >= 3 && !SKIP_TITLE_RE.test(text) && !NUMBERED_RE.test(text)) return clip(text)
+  }
+
+  if (fallbackSkillTitle?.trim()) return clip(fallbackSkillTitle.trim())
+  return 'Bản nháp văn bản'
 }
 
 export function countVietnameseWords(text: string): number {

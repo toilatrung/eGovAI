@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="eGovAI">
+  <circle cx="32" cy="32" r="32" fill="#B3121B"/>
+  <g transform="translate(2.6 14) scale(0.25)">
+    <path d="M146 40 L238 50 L146 64 Z" fill="#F2C230"/>
+    <rect x="116" y="32" width="46" height="34" rx="17" fill="#F2C230"/>
+    <circle cx="144" cy="49" r="8" fill="#B3121B"/>
+    <path d="M146 62 C146 88 130 94 106 94 L56 94" fill="none" stroke="#F2C230" stroke-width="20"/>
+    <rect x="84" y="22" width="26" height="100" fill="#F2C230"/>
+    <polygon points="66,82 2,54 0,86 66,106" fill="#F2C230"/>
+  </g>
+</svg>

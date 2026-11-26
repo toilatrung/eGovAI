@@ -5,7 +5,8 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()],
+    // unified/remark are ESM-only: bundle them into the CJS main build instead of require()-ing them.
+    plugins: [externalizeDepsPlugin({ exclude: ['unified', 'remark-parse', 'remark-gfm'] })],
     resolve: {
       alias: {
         '@shared': resolve('src/shared')

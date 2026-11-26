@@ -178,6 +178,8 @@ export interface ChatMessage {
   usage?: UsageStats
   status?: 'streaming' | 'done' | 'error' | 'aborted'
   error?: string
+  /** Ghi chú trạng thái từ ứng dụng (VD "máy chủ quá tải, đã chuyển sang mô hình nhanh"). */
+  statusNote?: string
 }
 
 export interface Conversation {
@@ -240,9 +242,14 @@ export interface AppSettings {
   language: 'vi' | 'en'
   theme: 'dark' | 'light'
   preferVietnameseReplies: boolean
+  /** Mô hình cụ thể (Cài đặt › Nâng cao). Rỗng = dùng "Chế độ AI" bên dưới. */
   defaultModelId: string
   effort: ReasoningEffort
   mode: ExecutionMode
+  /** Chế độ AI đơn giản cho cán bộ: Nhanh / Cân bằng / Chuyên sâu. */
+  aiPreset?: 'fast' | 'balanced' | 'deep'
+  /** Dòng mô hình chọn ở khung chat (VD "gemini-4-hydrogen"); rỗng = theo Chế độ AI. */
+  modelFamily?: string
   useSandbox: boolean
   computerUseEnabled: boolean
   fastModelForComputerUse?: boolean
@@ -345,6 +352,8 @@ export interface SendPromptPayload {
   globalSkillDirs?: string[]
   activeSkill?: SkillItem | null
   attachments?: AttachedItem[]
+  /** Ngày hiện tại dạng "ngày 26 tháng 11 năm 2026" (mặc định tính ở tiến trình chính). */
+  todayLabel?: string
 }
 
 export type AgyStreamEvent =
@@ -398,6 +407,15 @@ export type AgyStreamEvent =
       type: 'aborted'
       conversationId: string
       messageId: string
+    }
+  | {
+      /** Thông báo tiến trình cho cán bộ (VD máy chủ quá tải, đã chuyển mô hình). */
+      type: 'status'
+      conversationId: string
+      messageId: string
+      message: string
+      /** Mô hình đang trả lời sau khi chuyển (nếu có). */
+      modelId?: string
     }
 
 // ---- Phase 4: Document, Excel, Diff, AI WorkDir, Terminal, Scheduler & Customizations ----

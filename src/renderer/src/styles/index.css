@@ -445,3 +445,123 @@
 .dark-theme .text-gold-ink {
   color: var(--color-gold);
 }
+
+/* ===== Trang văn bản (tab Tài liệu) — mô phỏng bản in theo NĐ 30/2020 ===== */
+.egov-paper {
+  background: #fff;
+  color: #111;
+  padding: 36px 40px 48px 52px;
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 15px;
+  line-height: 1.45;
+}
+.dark-theme .egov-paper {
+  background: #1d1f23;
+  color: #e8e6e3;
+}
+.egov-paper p {
+  margin: 0 0 6px;
+  text-align: justify;
+  text-indent: 1cm;
+}
+.egov-paper h1,
+.egov-paper h2,
+.egov-paper h3,
+.egov-paper h4 {
+  font-weight: 700;
+  margin: 12px 0 6px;
+  font-size: 15px;
+  line-height: 1.35;
+}
+.egov-paper h1,
+.egov-paper h2 {
+  text-align: center;
+  font-size: 16px;
+}
+.egov-paper ul,
+.egov-paper ol {
+  margin: 0 0 6px;
+  padding-left: 1.6cm;
+}
+.egov-paper ul {
+  list-style: none;
+}
+.egov-paper ul > li::before {
+  content: '- ';
+  margin-left: -0.6em;
+}
+.egov-paper ol {
+  list-style: decimal;
+}
+.egov-paper li {
+  text-align: justify;
+  margin: 0 0 3px;
+}
+.egov-paper li p {
+  text-indent: 0;
+}
+.egov-paper blockquote {
+  margin: 6px 0 6px 1cm;
+  font-style: italic;
+}
+.egov-paper .egov-data-table {
+  margin: 8px 0 10px;
+  overflow-x: auto;
+}
+.egov-paper .egov-data-table table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13.5px;
+}
+.egov-paper .egov-data-table th,
+.egov-paper .egov-data-table td {
+  border: 1px solid #444;
+  padding: 3px 6px;
+  vertical-align: top;
+}
+.dark-theme .egov-paper .egov-data-table th,
+.dark-theme .egov-paper .egov-data-table td {
+  border-color: #777;
+}
+.egov-paper .egov-data-table th {
+  font-weight: 700;
+  text-align: center;
+}
+/* Bảng bố cục (Quốc hiệu, Nơi nhận/chữ ký): không kẻ viền, hai cột bằng nhau */
+.egov-paper .egov-layout-table {
+  margin: 4px 0 12px;
+}
+.egov-paper .egov-layout-table table {
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: fixed;
+  font-size: 14px;
+}
+.egov-paper .egov-layout-table th,
+.egov-paper .egov-layout-table td {
+  border: none;
+  padding: 2px 4px;
+  vertical-align: top;
+  text-align: center !important;
+  font-weight: inherit;
+}
+.egov-paper .egov-layout-table th:first-child:has(strong) {
+  font-weight: 400;
+}
+.egov-paper mark.egov-placeholder {
+  background: #fde68a;
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.dark-theme .egov-paper mark.egov-placeholder {
+  background: rgba(245, 158, 11, 0.35);
+}
+.egov-paper .egov-sign-table th:first-child,
+.egov-paper .egov-sign-table td:first-child {
+  text-align: left !important;
+  font-size: 12px;
+}
+.egov-paper .egov-sign-table th:first-child {
+  font-weight: 400;
+}

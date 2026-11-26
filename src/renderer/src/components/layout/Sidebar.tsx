@@ -200,19 +200,6 @@ export function Sidebar(): React.JSX.Element {
     setRenamingId(null)
   }
 
-  const exportMarkdown = (conv: Conversation): void => {
-    setMenuId(null)
-    const blob = new Blob([conversationToMarkdown(conv)], { type: 'text/markdown;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${exportFileBaseName(conv.title)}.md`
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    setTimeout(() => URL.revokeObjectURL(url), 2000)
-  }
-
   const exportWord = async (conv: Conversation): Promise<void> => {
     setMenuId(null)
     try {
@@ -620,10 +607,6 @@ export function Sidebar(): React.JSX.Element {
                     <button role="menuitem" onClick={() => startRename(conv)} className={menuItem}>
                       <Pencil className="h-3.5 w-3.5 text-muted" />
                       <span>Đổi tên</span>
-                    </button>
-                    <button role="menuitem" onClick={() => exportMarkdown(conv)} className={menuItem}>
-                      <FileText className="h-3.5 w-3.5 text-muted" />
-                      <span>Xuất Markdown (.md)</span>
                     </button>
                     <button role="menuitem" onClick={() => void exportWord(conv)} className={menuItem}>
                       <FileDown className="h-3.5 w-3.5 text-muted" />

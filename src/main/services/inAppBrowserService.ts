@@ -11,6 +11,22 @@ export interface WebAutomationBackend {
   close(): Promise<void>
 }
 
+/**
+ * Bỏ mã `Electron/x.y` và tên ứng dụng (`GoogleAI/x.y`, `eGovAI/x.y`) khỏi User-Agent của
+ * trình duyệt tích hợp. Một số cổng thông tin nhà nước (VD dichvucong.gov.vn) từ chối
+ * User-Agent có các mã này với thông báo "The requested URL was rejected".
+ */
+export function toStandardChromeUserAgent(ua: string): string {
+  return ua
+    .replace(/\s(?:GoogleAI|eGovAI|egovai-desktop)\/\S+/gi, '')
+    .replace(/\sElectron\/\S+/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
+/** Partition (phiên cookie) dùng chung cho thẻ <webview> của tab Trình duyệt. */
+export const IN_APP_BROWSER_PARTITION = 'persist:egovai-browser'
+
 export function normalizeBrowserInputUrl(raw: string): string {
   const trimmed = raw.trim()
   if (!trimmed) return ''

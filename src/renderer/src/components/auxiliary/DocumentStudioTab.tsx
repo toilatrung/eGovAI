@@ -275,7 +275,7 @@ export function DocumentStudioTab({ isLight }: DocumentStudioTabProps): React.JS
               <div className="mb-2 text-[11px] font-medium text-faint">
                 Hoặc tạo nhanh tệp mới trong dự án:
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => {
                     setCreatingKind('docx')
@@ -303,20 +303,6 @@ export function DocumentStudioTab({ isLight }: DocumentStudioTabProps): React.JS
                 >
                   <FileSpreadsheet className="h-4 w-4 text-brand" />
                   <span>Excel .xlsx</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setCreatingKind('markdown')
-                    setNewFileName('ghi-chu.md')
-                  }}
-                  className={`press flex flex-col items-center gap-1 rounded-xl border p-2.5 text-[11px] font-medium transition ${
-                    isLight
-                      ? 'border-line bg-surface hover:border-indigo-400'
-                      : 'border-line bg-surface hover:border-indigo-500/50'
-                  }`}
-                >
-                  <Plus className="h-4 w-4 text-brand" />
-                  <span>Văn bản .md</span>
                 </button>
               </div>
 

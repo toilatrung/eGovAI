@@ -35,6 +35,29 @@ pnpm package      # đóng gói bộ cài vào dist/ (cần .NET Framework 4.x c
 
 Script [`scripts/release.ps1`](scripts/release.ps1) chạy kiểm thử, đóng gói bộ cài, tính SHA-256, tạo tag, đẩy lên GitHub và tạo Release kèm bộ cài. Mặc định script bắt buộc bộ cài phải được ký số hợp lệ — cấu hình chứng thư theo [docs/code-signing.md](docs/code-signing.md) (hoặc thêm `-AllowUnsigned`).
 
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+
+Bộ cài được build và ký trên GitHub Actions ([.github/workflows/release.yml](.github/workflows/release.yml)) từ mã nguồn trong kho này.
+
+- Committers and reviewers: [thành viên của kho](https://github.com/toilatrung/eGovAI/graphs/contributors)
+- Approvers: [toilatrung](https://github.com/toilatrung)
+
+Mỗi yêu cầu ký đều phải được Approver phê duyệt thủ công trên SignPath.
+
+Các tệp do bên thứ ba phát hành đã có chữ ký riêng (ví dụ `agy.exe` của Google, `d3dcompiler_47.dll` của Microsoft) được giữ nguyên chữ ký gốc, không ký lại.
+
+## Privacy policy
+
+eGovAI không tự gửi dữ liệu người dùng đi đâu, trừ các trường hợp sau:
+
+- Nội dung trò chuyện, tệp đính kèm và yêu cầu người dùng gửi cho AI được chuyển tới dịch vụ Google Antigravity thông qua lõi `agy.exe`, theo điều khoản của Google.
+- Khi khởi động, ứng dụng gọi GitHub API (`api.github.com/repos/toilatrung/eGovAI/releases/latest`, không kèm thông tin cá nhân) để kiểm tra phiên bản mới.
+- Trình duyệt tích hợp chỉ truy cập các trang mà người dùng (hoặc AI theo yêu cầu của người dùng) mở.
+
+Nhật ký kiểm toán và cài đặt được lưu cục bộ trên máy.
+
 ## Trang giới thiệu
 
 Mã nguồn ở `site/` (HTML tĩnh), deploy lên Vercel (project `egovai`):

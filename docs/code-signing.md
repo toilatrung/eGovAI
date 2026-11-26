@@ -86,6 +86,32 @@ pnpm release          # phát hành (bắt buộc ký)
 
 Không dùng chứng thư tự ký (self-signed): SAC vẫn chặn.
 
+## 4b. Ký qua SignPath Foundation (đã chọn)
+
+Kho đã có sẵn mọi thứ phía mã nguồn:
+
+- `.github/workflows/release.yml` — workflow chạy tay: build trên `windows-latest`, cài `agy.exe`, chạy `build-installer.ps1 -Phase Stage` để gom các tệp PE chưa ký, gửi SignPath ký (cấu hình `app-files`), chạy `-Phase Bundle` để ghép bộ cài từ tệp đã ký, gửi SignPath ký bộ cài (cấu hình `installer`), kiểm tra chữ ký + tem thời gian, tính SHA-256 và (tùy chọn) tải lên GitHub Release.
+- `.signpath/artifact-configurations/app-files.xml` và `installer.xml` — nội dung artifact configuration để dán vào SignPath.
+- README có mục **Code signing policy** và **Privacy policy** mà SignPath Foundation yêu cầu.
+
+Việc bạn (chủ dự án) cần tự làm:
+
+1. Nộp đơn tại https://signpath.org (mục *Apply*), khai kho `github.com/toilatrung/eGovAI`, giấy phép MIT. Chờ duyệt (thời gian **cần xác nhận**).
+2. Khi được duyệt, trên SignPath:
+   - Tạo (hoặc kiểm tra) project slug **`eGovAI`**, signing policy slug **`release-signing`**, liên kết với GitHub trusted build system.
+   - Thêm 2 artifact configuration slug **`app-files`** và **`installer`** từ hai tệp XML trên.
+   - Tạo CI user, lấy API token; ghi lại Organization ID.
+3. Trên GitHub (Settings → Secrets and variables → Actions):
+   - Secret `SIGNPATH_API_TOKEN`
+   - Variable `SIGNPATH_ORGANIZATION_ID`
+4. Vào Actions → **Build & ký bộ cài** → Run workflow (tích *upload_to_release* để thay bộ cài trên Release). Khi workflow chờ, vào SignPath phê duyệt 2 yêu cầu ký.
+
+Điểm **cần xác nhận** với SignPath Foundation khi nộp đơn:
+
+- `eGovAI.exe` là `electron.exe` (mã nguồn mở, giấy phép MIT) đã đổi biểu tượng; các DLL `ffmpeg.dll`, `libEGL.dll`, `libGLESv2.dll`, `vk_swiftshader.dll`, `vulkan-1.dll` đi kèm Electron và `agent-desktop-win32-*.exe` (gói npm `agent-desktop`) đều chưa ký. Hỏi rõ SignPath có đồng ý ký các thành phần mã nguồn mở bên thứ ba này không — nếu không, Smart App Control vẫn chặn khi nạp chúng.
+- `agy.exe` là phần mềm đóng của Google (đã có chữ ký Google LLC, không gửi đi ký). Hỏi SignPath có chấp nhận bộ cài kèm thành phần đóng đã ký sẵn không; nếu không, cần chuyển sang cho ứng dụng tải `agy.exe` khi cài/chạy lần đầu (ứng dụng đã có sẵn luồng cài `agy` qua `irm https://antigravity.google/cli/install.ps1 | iex`).
+- Tên các tham số của action `signpath/github-action-submit-signing-request@v1` và cú pháp XML artifact configuration đối chiếu lại với tài liệu SignPath hiện hành.
+
 ## 5. Kiểm tra chữ ký
 
 ```powershell

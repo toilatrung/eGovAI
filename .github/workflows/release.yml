@@ -1,0 +1,135 @@
+# Build bộ cài eGovAI trên GitHub Actions và ký số qua SignPath (chứng thư SignPath Foundation).
+# Chỉ chạy khi bấm tay (Actions → "Build & ký bộ cài" → Run workflow) — không tự chạy khi push.
+# Cần cấu hình trước (xem docs/code-signing.md, mục SignPath):
+#   - Secret   SIGNPATH_API_TOKEN        : API token của CI user trên SignPath
+#   - Variable SIGNPATH_ORGANIZATION_ID  : Organization ID trên SignPath
+#   - Trên SignPath: project "eGovAI", signing policy "release-signing",
+#     artifact configuration "app-files" và "installer" (nội dung ở .signpath/artifact-configurations/)
+name: Build & ký bộ cài
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload_to_release:
+        description: 'Tải bộ cài đã ký lên GitHub Release v<version> (thay tệp cũ)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  actions: read
+
+env:
+  SIGNPATH_PROJECT_SLUG: eGovAI
+  SIGNPATH_POLICY_SLUG: release-signing
+
+jobs:
+  build-sign:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Cài thư viện
+        run: pnpm install --frozen-lockfile
+
+      - name: Kiểm thử
+        run: pnpm test
+
+      - name: Cài lõi agy.exe (Google Antigravity CLI)
+        shell: pwsh
+        run: |
+          irm https://antigravity.google/cli/install.ps1 | iex
+          $agy = Join-Path $env:LOCALAPPDATA 'agy\bin\agy.exe'
+          if (-not (Test-Path $agy)) { $agy = (Get-Command agy.exe -ErrorAction Stop).Source }
+          "EGOVAI_AGY_BIN=$agy" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          $sig = Get-AuthenticodeSignature $agy
+          Write-Host "agy.exe: $($sig.Status) — $($sig.SignerCertificate.Subject)"
+
+      - name: Pha 1 — ghép ứng dụng, gom tệp cần ký
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File installer/build-installer.ps1 -Phase Stage
+
+      - name: Tải lên tệp cần ký
+        id: upload-app
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-unsigned
+          path: build/to-sign/
+          if-no-files-found: error
+
+      - name: SignPath — ký tệp ứng dụng
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ env.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ env.SIGNPATH_POLICY_SLUG }}
+          artifact-configuration-slug: app-files
+          github-artifact-id: ${{ steps.upload-app.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 7200
+          output-artifact-directory: build/signed
+
+      - name: Pha 2 — ghép bộ cài từ tệp đã ký
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File installer/build-installer.ps1 -Phase Bundle -SignedDir build/signed -RequireSign
+
+      - name: Tải lên bộ cài cần ký
+        id: upload-setup
+        uses: actions/upload-artifact@v4
+        with:
+          name: setup-unsigned
+          path: dist/eGovAI-Setup-*.exe
+          if-no-files-found: error
+
+      - name: SignPath — ký bộ cài
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ env.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ env.SIGNPATH_POLICY_SLUG }}
+          artifact-configuration-slug: installer
+          github-artifact-id: ${{ steps.upload-setup.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 7200
+          output-artifact-directory: dist/signed
+
+      - name: Kiểm tra chữ ký và tính SHA-256
+        id: verify
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $exe = Join-Path 'dist/signed' "eGovAI-Setup-$version.exe"
+          $sig = Get-AuthenticodeSignature $exe
+          Write-Host "Trạng thái: $($sig.Status) — $($sig.SignerCertificate.Subject)"
+          if ($sig.Status -ne 'Valid') { throw "Bộ cài chưa có chữ ký hợp lệ: $($sig.Status)" }
+          if (-not $sig.TimeStamperCertificate) { throw 'Chữ ký thiếu tem thời gian.' }
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
+          "$hash *eGovAI-Setup-$version.exe" | Out-File dist/signed/SHA256SUMS.txt -Encoding ascii
+          "version=$version" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Lưu bộ cài đã ký
+        uses: actions/upload-artifact@v4
+        with:
+          name: eGovAI-Setup-${{ steps.verify.outputs.version }}-signed
+          path: dist/signed/
+
+      - name: Tải lên GitHub Release
+        if: ${{ inputs.upload_to_release }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $v = '${{ steps.verify.outputs.version }}'
+          gh release upload "v$v" "dist/signed/eGovAI-Setup-$v.exe" dist/signed/SHA256SUMS.txt --clobber

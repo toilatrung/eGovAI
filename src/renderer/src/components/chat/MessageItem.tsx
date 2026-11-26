@@ -28,6 +28,13 @@ import {
 import { ToolTimeline } from './ToolCallCard'
 import { classifyImageSrc, markdownUrlTransform } from '../../utils/markdownSafety'
 import { extractLegalReferences, vbplSearchUrl } from '../../utils/legalRefs'
+import { splitDocBlocks, type MessageSegment } from '../../../../shared/docBlocks'
+import { deriveLiveDraftTitle, looksLikeDocumentDraft } from '../../utils/liveDraft'
+import { breakAwareComponents } from '../../utils/markdownBreaks'
+import { DocumentCard } from './DocumentCard'
+import { parsePlanBlock, stripPlanBlock } from '../../../../shared/docPlan'
+import { ListChecks } from 'lucide-react'
+import type { Components } from 'react-markdown'
 
 const actionBtn =
   'press flex items-center gap-1 rounded-md px-2 py-1 text-[11.5px] text-faint hover:bg-sunken hover:text-ink disabled:pointer-events-none disabled:opacity-40'
@@ -55,6 +62,8 @@ export function MessageItem({ message, isLight, isLast = false }: MessageItemPro
   const [draft, setDraft] = useState(message.content)
   const editRef = useRef<HTMLTextAreaElement>(null)
   const [streamElapsedSec, setStreamElapsedSec] = useState(0)
+  const activeConversationId = useAppStore((s) => s.activeConversationId)
+  const hasSkillContext = Boolean(message.activeSkill)
 
   useEffect(() => {
     if (message.role !== 'assistant' || message.status !== 'streaming') {
@@ -82,6 +91,38 @@ export function MessageItem({ message, isLight, isLast = false }: MessageItemPro
     if (message.role !== 'assistant' || message.status === 'streaming' || !message.content) return []
     return extractLegalReferences(message.content)
   }, [message.role, message.status, message.content])
+
+  /**
+   * Văn bản trong khối egov-doc hiện thành thẻ (toàn văn nằm ở tab Tài liệu). Câu trả lời cũ
+   * không có khối nhưng là văn bản hành chính thì cũng thu gọn thành thẻ.
+   */
+  /** Câu trả lời lập kế hoạch: khối JSON egov-plan được thay bằng thẻ "Đã lập kế hoạch". */
+  const planInfo = useMemo(() => {
+    if (message.role !== 'assistant' || !message.content) return null
+    const stripped = stripPlanBlock(message.content)
+    if (!stripped.hasPlan) return null
+    return { text: stripped.text, closed: stripped.closed, parsed: parsePlanBlock(message.content) }
+  }, [message.role, message.content])
+
+  const segments = useMemo<MessageSegment[]>(() => {
+    if (message.role !== 'assistant' || !message.content) return []
+    const content = planInfo ? planInfo.text : message.content
+    if (!content.trim()) return []
+    const segs = splitDocBlocks(content)
+    if (segs.some((sg) => sg.type === 'doc')) return segs
+    if (!planInfo && looksLikeDocumentDraft(content, hasSkillContext)) {
+      return [
+        {
+          type: 'doc',
+          index: -1,
+          title: deriveLiveDraftTitle(message.content),
+          body: message.content,
+          closed: message.status !== 'streaming'
+        }
+      ]
+    }
+    return segs
+  }, [message.role, message.content, message.status, hasSkillContext, planInfo])
 
   const cancelEdit = (): void => {
     setEditing(false)
@@ -218,54 +259,9 @@ export function MessageItem({ message, isLight, isLast = false }: MessageItemPro
   }
 
   const isStreaming = message.status === 'streaming'
-  const hasTools = Boolean(message.toolCalls && message.toolCalls.length > 0)
-  const hasContent = message.content.trim().length > 0
-  const activeTool = message.toolCalls?.find((tc) => tc.state === 'ACTIVE')
-  const activeToolLabel = activeTool
-    ? t(`tools.${activeTool.toolName}`, { defaultValue: activeTool.toolName })
-    : ''
-  const streamingStatusText = hasContent
-    ? 'Đang soạn thảo nội dung…'
-    : activeTool
-      ? `Đang chuẩn bị · ${activeToolLabel} (chưa bắt đầu viết)`
-      : hasTools
-        ? 'Đang tổng hợp để bắt đầu soạn…'
-        : t('chat.thinking')
-
-  return (
-    <div className="flex flex-col gap-2.5">
-      {/* Header: mark, name and status share one baseline row */}
-      <div className="flex h-7 items-center gap-2.5">
-        <EgovMark size={26} />
-        <span className="font-brand text-[14px] font-bold tracking-[-0.01em] text-ink">eGovAI</span>
-        {isStreaming && (
-          <span className="inline-flex items-center gap-1.5 text-[13px] text-muted">
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-brand" />
-            <span>{streamingStatusText}</span>
-            {streamElapsedSec > 0 && (
-              <span className="tabular text-[12px] text-faint">· {streamElapsedSec}s</span>
-            )}
-          </span>
-        )}
-        {!isStreaming && message.thinkingSeconds && message.thinkingSeconds > 0.2 && (
-          <span className="tabular inline-flex items-center gap-1.5 text-[13px] text-faint">
-            <Brain className="h-3.5 w-3.5" />
-            <span>{t('chat.thoughtFor', { seconds: message.thinkingSeconds.toFixed(1) })}</span>
-          </span>
-        )}
-      </div>
-
-      {/* Body lines up with the name, not the mark */}
-      <div className="min-w-0 space-y-3 pl-9">
-        {hasTools && <ToolTimeline toolCalls={message.toolCalls!} isStreaming={isStreaming} />}
-
-        {/* Markdown Response */}
-        {message.content && (
-          <div className="markdown-body text-[14.5px] text-ink">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              urlTransform={markdownUrlTransform}
-              components={{
+  const markdownComponents: Components = {
+    ...breakAwareComponents,
+    ...({
                 img: ({ src, alt }) => {
                   const cls = classifyImageSrc(typeof src === 'string' ? src : '')
                   if (cls.kind === 'local') {
@@ -327,11 +323,104 @@ export function MessageItem({ message, isLight, isLast = false }: MessageItemPro
                     </a>
                   )
                 }
-              }}
-            >
-              {message.content}
-            </ReactMarkdown>
+              })
+  }
+  const hasTools = Boolean(message.toolCalls && message.toolCalls.length > 0)
+  const hasContent = message.content.trim().length > 0
+  const activeTool = message.toolCalls?.find((tc) => tc.state === 'ACTIVE')
+  const activeToolLabel = activeTool
+    ? t(`tools.${activeTool.toolName}`, { defaultValue: activeTool.toolName })
+    : ''
+  const streamingStatusText = hasContent
+    ? 'Đang soạn thảo nội dung…'
+    : activeTool
+      ? `Đang chuẩn bị · ${activeToolLabel} (chưa bắt đầu viết)`
+      : hasTools
+        ? 'Đang tổng hợp để bắt đầu soạn…'
+        : t('chat.thinking')
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      {/* Header: mark, name and status share one baseline row */}
+      <div className="flex h-7 items-center gap-2.5">
+        <EgovMark size={26} />
+        <span className="font-brand text-[14px] font-bold tracking-[-0.01em] text-ink">eGovAI</span>
+        {isStreaming && (
+          <span className="inline-flex items-center gap-1.5 text-[13px] text-muted">
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-brand" />
+            <span>{streamingStatusText}</span>
+            {streamElapsedSec > 0 && (
+              <span className="tabular text-[12px] text-faint">· {streamElapsedSec}s</span>
+            )}
+          </span>
+        )}
+        {!isStreaming && message.thinkingSeconds && message.thinkingSeconds > 0.2 && (
+          <span className="tabular inline-flex items-center gap-1.5 text-[13px] text-faint">
+            <Brain className="h-3.5 w-3.5" />
+            <span>{t('chat.thoughtFor', { seconds: message.thinkingSeconds.toFixed(1) })}</span>
+          </span>
+        )}
+      </div>
+
+      {/* Body lines up with the name, not the mark */}
+      <div className="min-w-0 space-y-3 pl-9">
+        {hasTools && <ToolTimeline toolCalls={message.toolCalls!} isStreaming={isStreaming} />}
+
+        {message.statusNote && (
+          <div
+            role="status"
+            className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12.5px] text-amber-800"
+          >
+            <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0" />
+            <span>{message.statusNote}</span>
           </div>
+        )}
+
+        {planInfo && (
+          <button
+            type="button"
+            onClick={() => useAppStore.setState({ auxOpen: true, auxTab: 'plan' })}
+            className="press flex w-full items-center gap-3 rounded-xl border border-line bg-surface px-3.5 py-3 text-left shadow-xs hover:border-brand/40"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-brand">
+              {planInfo.closed ? <ListChecks className="h-4 w-4" /> : <Loader2 className="h-4 w-4 animate-spin" />}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[14px] font-semibold text-ink">
+                {planInfo.parsed?.name ?? 'Kế hoạch soạn văn bản'}
+              </span>
+              <span className="block text-[12px] text-faint">
+                {planInfo.closed
+                  ? `Đã lập danh sách ${planInfo.parsed?.steps.length ?? 0} văn bản — mở tab Kế hoạch để kiểm tra và bấm Soạn`
+                  : 'Đang lập danh sách văn bản…'}
+              </span>
+            </span>
+          </button>
+        )}
+
+        {/* Nội dung trả lời: lời trao đổi + thẻ văn bản */}
+        {segments.map((seg, i) =>
+          seg.type === 'doc' ? (
+            <DocumentCard
+              key={`doc-${i}`}
+              conversationId={activeConversationId ?? ''}
+              messageId={message.id}
+              docIndex={seg.index >= 0 ? seg.index : undefined}
+              title={seg.title || deriveLiveDraftTitle(seg.body)}
+              body={seg.body}
+              streaming={isStreaming && !seg.closed}
+            />
+          ) : (
+            <div key={`txt-${i}`} className="markdown-body text-[14.5px] text-ink">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                urlTransform={markdownUrlTransform}
+                components={markdownComponents}
+              >
+                {seg.text}
+              </ReactMarkdown>
+            </div>
+          )
         )}
 
         {/* Quick Open File Buttons for any local files referenced in the AI response */}

@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 10 240 120" role="img" aria-label="eGovAI – chim hạc">
+  <g stroke-linecap="butt">
+    <path d="M150 47 L234 49 L234 51.5 L152 60 Z" fill="#111111"/>
+    <rect x="124" y="40" width="34" height="22" rx="11" fill="#111111"/>
+    <circle cx="145" cy="51" r="6.4" fill="#FFFFFF"/>
+    <circle cx="145" cy="51" r="3.1" fill="#111111"/>
+    <line x1="127" y1="38" x2="121" y2="22" stroke="#111111" stroke-width="3.6"/>
+    <line x1="134" y1="38" x2="128" y2="22" stroke="#111111" stroke-width="3.6"/>
+    <line x1="141" y1="38" x2="135" y2="22" stroke="#111111" stroke-width="3.6"/>
+    <path d="M154 62 C154 84 138 90 116 90 L58 90" fill="none" stroke="#111111" stroke-width="5"/>
+    <path d="M143 62 C143 76 132 81 116 81 L58 81" fill="none" stroke="#111111" stroke-width="5"/>
+    <rect x="98" y="22" width="9" height="54" fill="#111111"/>
+    <line x1="84" y1="24.5" x2="98" y2="24.5" stroke="#111111" stroke-width="3.4"/>
+    <line x1="84" y1="30.5" x2="98" y2="30.5" stroke="#111111" stroke-width="3.4"/>
+    <line x1="84" y1="36.5" x2="98" y2="36.5" stroke="#111111" stroke-width="3.4"/>
+    <line x1="84" y1="42.5" x2="98" y2="42.5" stroke="#111111" stroke-width="3.4"/>
+    <line x1="84" y1="48.5" x2="98" y2="48.5" stroke="#111111" stroke-width="3.4"/>
+    <line x1="84" y1="54.5" x2="98" y2="54.5" stroke="#111111" stroke-width="3.4"/>
+    <line x1="84" y1="60.5" x2="98" y2="60.5" stroke="#111111" stroke-width="3.4"/>
+    <line x1="84" y1="66.5" x2="98" y2="66.5" stroke="#111111" stroke-width="3.4"/>
+    <line x1="84" y1="72.5" x2="98" y2="72.5" stroke="#111111" stroke-width="3.4"/>
+    <line x1="85" y1="21" x2="81" y2="11" stroke="#111111" stroke-width="3.4"/>
+    <line x1="90" y1="21" x2="86" y2="11" stroke="#111111" stroke-width="3.4"/>
+    <line x1="95" y1="21" x2="91" y2="11" stroke="#111111" stroke-width="3.4"/>
+    <line x1="100" y1="21" x2="96" y2="11" stroke="#111111" stroke-width="3.4"/>
+    <line x1="105" y1="21" x2="101" y2="11" stroke="#111111" stroke-width="3.4"/>
+    <rect x="98" y="95" width="9" height="25" fill="#111111"/>
+    <line x1="84" y1="97.5" x2="98" y2="97.5" stroke="#111111" stroke-width="3.4"/>
+    <line x1="84" y1="103.5" x2="98" y2="103.5" stroke="#111111" stroke-width="3.4"/>
+    <line x1="84" y1="109.5" x2="98" y2="109.5" stroke="#111111" stroke-width="3.4"/>
+    <line x1="84" y1="115.5" x2="98" y2="115.5" stroke="#111111" stroke-width="3.4"/>
+    <line x1="85" y1="121" x2="81" y2="131" stroke="#111111" stroke-width="3.4"/>
+    <line x1="90" y1="121" x2="86" y2="131" stroke="#111111" stroke-width="3.4"/>
+    <line x1="95" y1="121" x2="91" y2="131" stroke="#111111" stroke-width="3.4"/>
+    <line x1="100" y1="121" x2="96" y2="131" stroke="#111111" stroke-width="3.4"/>
+    <line x1="105" y1="121" x2="101" y2="131" stroke="#111111" stroke-width="3.4"/>
+    <mask id="egovTailCut" maskUnits="userSpaceOnUse" x="-20" y="-20" width="280" height="180"><rect x="-20" y="-20" width="280" height="180" fill="white"/><line x1="52.92" y1="90.47" x2="56.83" y2="78.45" stroke="black" stroke-width="2.4"/><line x1="46.69" y1="88.94" x2="50.82" y2="76.23" stroke="black" stroke-width="2.4"/><line x1="40.46" y1="87.4" x2="44.81" y2="74.01" stroke="black" stroke-width="2.4"/><line x1="34.23" y1="85.87" x2="38.8" y2="71.79" stroke="black" stroke-width="2.4"/><line x1="28" y1="84.33" x2="32.79" y2="69.57" stroke="black" stroke-width="2.4"/><line x1="21.77" y1="82.79" x2="26.79" y2="67.35" stroke="black" stroke-width="2.4"/><line x1="15.54" y1="81.26" x2="20.78" y2="65.13" stroke="black" stroke-width="2.4"/><line x1="9.31" y1="79.72" x2="14.77" y2="62.91" stroke="black" stroke-width="2.4"/></mask>
+    <polygon points="61.99,91.68 1.64,76.8 8.43,55.88 66.01,79.32" fill="#111111" mask="url(#egovTailCut)"/>
+    <polyline points="76,92 64,106 34,102" fill="none" stroke="#111111" stroke-width="4" stroke-linejoin="miter"/>
+    <polyline points="84,92 72,114 40,114" fill="none" stroke="#111111" stroke-width="4" stroke-linejoin="miter"/>
+  </g>
+</svg>

@@ -1,4 +1,5 @@
 import type { AgyStreamEvent, ToolCallBlock, UsageStats } from '../../shared/types'
+import { isOverloadError } from './overloadFallback'
 
 interface RawUsage {
   input_tokens?: number
@@ -142,6 +143,19 @@ export function parseAgyNdjsonLine(
         messageId,
         toolCall
       }
+    }
+
+    // Bước lỗi hệ thống (VD máy chủ quá tải 503 khi lõi đang tự thử lại): báo trạng thái,
+    // không kết thúc lượt — adapter quyết định có chuyển mô hình dự phòng hay không.
+    const stepError = (step as { error?: unknown }).error
+    const errorText =
+      typeof stepError === 'string'
+        ? stepError
+        : stepError && typeof stepError === 'object' && 'message' in stepError
+          ? String((stepError as { message?: unknown }).message ?? '')
+          : ''
+    if (errorText && isOverloadError(errorText)) {
+      return { type: 'status', conversationId, messageId, message: errorText }
     }
 
     return null

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { curateModels } from '../../../../shared/aiPresets'
 import {
   ArrowLeft,
   Info,
@@ -692,7 +693,11 @@ export function SettingsView(): React.JSX.Element {
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-xs font-medium">{t('settings.defaultModel')}</label>
+                <label className="block text-xs font-medium">Mô hình cụ thể (nâng cao)</label>
+                <p className="mt-0.5 text-[11px] text-faint">
+                  Để "eGovAI Autopilot" là đủ cho hầu hết công việc. Chọn một mô hình ở đây sẽ thay cho ô Chế độ AI
+                  (Nhanh / Cân bằng / Chuyên sâu) trong khung chat.
+                </p>
                 <select
                   value={settings.defaultModelId}
                   onChange={(e) => void updateSettings({ defaultModelId: e.target.value })}
@@ -702,17 +707,21 @@ export function SettingsView(): React.JSX.Element {
                       : 'border-line-strong bg-surface text-ink'
                   }`}
                 >
-                  <option value="">{t('settings.autoModel')}</option>
-                  {agyStatus?.models.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
+                  <option value="">eGovAI Autopilot (khuyên dùng)</option>
+                  {curateModels(agyStatus?.models ?? [])
+                    .flatMap((fam) => fam.variants.map((v) => v.id))
+                    .concat(settings.defaultModelId ? [settings.defaultModelId] : [])
+                    .filter((id, i, arr) => arr.indexOf(id) === i)
+                    .map((id) => (
+                      <option key={id} value={id}>
+                        {agyStatus?.models.find((m) => m.id === id)?.name ?? id}
+                      </option>
+                    ))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-medium">{t('settings.defaultEffort')}</label>
+                <label className="block text-xs font-medium">{t('settings.defaultEffort')} (chỉ khi chọn mô hình cụ thể)</label>
                 <select
                   value={settings.effort}
                   onChange={(e) =>
